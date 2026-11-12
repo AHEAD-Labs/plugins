@@ -62,4 +62,4 @@ class Registry:
         return sorted(vs, key=lambda v: tuple(map(int, v.split("."))))
 
     def capabilities(self) -> list[str]:
-        return sorted(c for c in os.listdir(self.root)) if os.path.isdir(self.root) else []
+        return sorted(c for c in os.listdir(self.root) if not c.startswith(".")) if os.path.isdir(self.root) else []
