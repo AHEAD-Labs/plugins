@@ -35,7 +35,7 @@ def wait_ready(lam, name):
     raise TimeoutError("lambda not ready")
 
 
-def deploy(s, registry_dir, cap, ver, workdir):
+def deploy(s, registry_dir, cap, ver, workdir, entra=None):
     acct = account(s); lam, apigw, s3 = s.client("lambda"), s.client("apigatewayv2"), s.client("s3")
     zpath, sha, rec = package.build(registry_dir, cap, ver, workdir)
     key = f"artifacts/{cap}-{ver}-{sha[:16]}.zip"
@@ -44,6 +44,8 @@ def deploy(s, registry_dir, cap, ver, workdir):
     env = {"GMO_BACKEND_URL": "inprocess", "CAPABILITY_VERSION": ver, "GMO_REVOCATION_TTL": "5",
            "GMO_REVOCATIONS": f"s3://{bucket(acct)}/revocations.json", "GMO_IDP_SECRET": idp_secret(s),
            "GMO_REMOTE_ENDPOINT": "https://pending.invalid/mcp"}
+    if entra:  # real identity: the function validates Entra tokens too (defence in depth)
+        env.update(GMO_ENTRA_TENANT=entra["tenant_id"], GMO_ENTRA_AUDIENCE=entra["api_client_id"])
     code = {"S3Bucket": bucket(acct), "S3Key": key}
     try:
         old = lam.get_function_configuration(FunctionName=FUNCTION)
@@ -76,6 +78,20 @@ def deploy(s, registry_dir, cap, ver, workdir):
     # traffic limits at the native gateway (R1)
     apigw.update_stage(ApiId=api["ApiId"], StageName="$default",
                        DefaultRouteSettings={"ThrottlingRateLimit": 10.0, "ThrottlingBurstLimit": 20})
+    if entra:  # native gateway check: API Gateway validates issuer/audience/scope BEFORE the function runs
+        auth = next((a for a in apigw.get_authorizers(ApiId=api["ApiId"])["Items"] if a["Name"] == "gmo-entra"), None)
+        cfg = {"Audience": [entra["api_client_id"]], "Issuer": entra["issuer"]}
+        if auth:
+            apigw.update_authorizer(ApiId=api["ApiId"], AuthorizerId=auth["AuthorizerId"], JwtConfiguration=cfg)
+        else:
+            auth = apigw.create_authorizer(ApiId=api["ApiId"], AuthorizerType="JWT", Name="gmo-entra",
+                IdentitySource=["$request.header.Authorization"], JwtConfiguration=cfg)
+        integ = apigw.get_integrations(ApiId=api["ApiId"])["Items"][0]["IntegrationId"]
+        route = next((r for r in apigw.get_routes(ApiId=api["ApiId"])["Items"] if r["RouteKey"] == "ANY /mcp"), None)
+        kw = dict(ApiId=api["ApiId"], Target=f"integrations/{integ}", AuthorizationType="JWT",
+                  AuthorizerId=auth["AuthorizerId"], AuthorizationScopes=["project-status:read"])
+        if route: apigw.update_route(RouteId=route["RouteId"], **kw)
+        else: apigw.create_route(RouteKey="ANY /mcp", **kw)
     endpoint = api["ApiEndpoint"].rstrip("/") + "/mcp"
     if env["GMO_REMOTE_ENDPOINT"] != endpoint:
         env["GMO_REMOTE_ENDPOINT"] = endpoint
@@ -105,14 +121,41 @@ async def selfcheck(endpoint, secret):
     return out
 
 
+def az_token(scope=None, resource=None):
+    import subprocess
+    a = ["az", "account", "get-access-token", "--query", "accessToken", "-o", "tsv"]
+    a += ["--scope", scope] if scope else ["--resource", resource]
+    return subprocess.run(a, capture_output=True, text=True, check=True).stdout.strip()
+
+
+async def selfcheck_entra(endpoint, entra):
+    """Live check with REAL Entra tokens, including tokens that must be rejected."""
+    from govpipeline import mcpclient as mc
+    from platform_gateway import idp
+    os.environ["GMO_IDP_SECRET"] = "x" * 32
+    good = az_token(scope=entra["scope"])
+    out = []
+    ok = lambda n, p, d="": out.append({"check": n, "passed": bool(p), "detail": d})
+    ok("no token -> 401", await mc.http_status(endpoint, None) == 401)
+    ok("garbage token -> 401", await mc.http_status(endpoint, "not-a-jwt") == 401)
+    ok("demo (HS256) token no longer accepted -> 401", await mc.http_status(endpoint, idp.mint("alice", endpoint)) == 401)
+    ok("Entra token for another API (Graph) -> 401", await mc.http_status(endpoint, az_token(resource="https://graph.microsoft.com")) == 401)
+    ok("valid Entra token (you) -> 200", await mc.http_status(endpoint, good) == 200)
+    async with mc.http_session(endpoint, good) as sess:
+        okc, data = await mc.call(sess, "list_projects")
+        ok("tool call runs as your Entra identity", okc, str(data)[:90])
+    return out
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--profile"); ap.add_argument("--registry", required=True)
     ap.add_argument("--cap", default="ahead.project-status"); ap.add_argument("--version", required=True)
-    ap.add_argument("--work", default=".gmo/aws-work"); ap.add_argument("--state-out")
+    ap.add_argument("--work", default=".gmo/aws-work"); ap.add_argument("--state-out"); ap.add_argument("--entra", help="json from platforms/entra/setup.py")
     a = ap.parse_args(); s = session(a.profile)
-    st = deploy(s, a.registry, a.cap, a.version, a.work); print(json.dumps(st, indent=2))
-    time.sleep(5)
-    res = asyncio.run(selfcheck(st["endpoint"], idp_secret(s)))
+    ent = json.load(open(a.entra)) if a.entra else None
+    st = deploy(s, a.registry, a.cap, a.version, a.work, ent); print(json.dumps(st, indent=2))
+    time.sleep(8)
+    res = asyncio.run(selfcheck_entra(st["endpoint"], ent) if ent else selfcheck(st["endpoint"], idp_secret(s)))
     for r in res: print(("PASS " if r["passed"] else "FAIL ") + r["check"], r["detail"])
     if a.state_out:
         os.makedirs(os.path.dirname(a.state_out), exist_ok=True); json.dump({**st, "selfcheck": res}, open(a.state_out, "w"), indent=2)

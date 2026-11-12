@@ -8,7 +8,7 @@ from pydantic import AnyHttpUrl
 
 from project_status.backend import HttpBackend, InProcessBackend
 from project_status.server import build_server
-from . import idp
+from . import entra, idp
 from .gateway import GatewayTokenVerifier
 
 ENDPOINT = lambda: os.environ.get("GMO_REMOTE_ENDPOINT", "http://127.0.0.1:8802/mcp")
@@ -29,7 +29,7 @@ def build_remote():
         streamable_http_path=u.path,
         stateless_http=True, json_response=True,
         token_verifier=GatewayTokenVerifier(audience=endpoint),
-        auth=AuthSettings(issuer_url=AnyHttpUrl(idp.ISSUER), resource_server_url=AnyHttpUrl(endpoint),
+        auth=AuthSettings(issuer_url=AnyHttpUrl(entra.issuer() if entra.enabled() else idp.ISSUER), resource_server_url=AnyHttpUrl(endpoint),
                           required_scopes=["project-status:read"]),
     )
 

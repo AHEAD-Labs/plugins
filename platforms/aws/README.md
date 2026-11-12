@@ -20,3 +20,14 @@ Known limits of this first pass:
 - Suspension: the gateway reads `s3://gmo-state-<acct>/revocations.json` with a 5 s cache, so a
   suspension takes effect within ~5 s (`GMO_REVOCATION_TTL`).
 - The Lambda stays in the open internet path; private connectivity is not addressed.
+
+## Entra (real identity)
+`platforms/entra/setup.py` creates the `gmo-project-status` API app (scope `project-status:read`)
+and the `gmo-codex-client` public client; `--destroy` removes both. Pass its JSON to deploy:
+
+    python platforms/entra/setup.py > .gmo-demo/entra.json
+    uv run --extra aws python platforms/aws/deploy.py --registry <dir> --version 0.1.0 --entra .gmo-demo/entra.json
+
+The API Gateway JWT authorizer checks issuer, audience and scope before the function runs; the
+function validates the token again and applies suspension per user. The demo HS256 IdP is
+rejected once Entra is on.

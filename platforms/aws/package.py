@@ -4,7 +4,7 @@ import hashlib, os, shutil, subprocess, zipfile
 from govpipeline.registry import Registry
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-DEPS = ["mcp>=1.2,<2", "pyjwt", "mangum", "httpx"]
+DEPS = ["mcp>=1.2,<2", "pyjwt[crypto]", "mangum", "httpx"]
 
 
 def build(registry_dir: str, cap: str, ver: str, out_dir: str) -> tuple[str, str, dict]:
