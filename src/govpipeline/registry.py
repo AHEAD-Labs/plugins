@@ -3,7 +3,15 @@ import hashlib, hmac, json, os, shutil
 
 from .util import sha256_file
 
-KEY = lambda: os.environ.get("GMO_SIGNING_KEY", "dev-only-signing-key").encode()
+def KEY() -> bytes:
+    """Signing key. Local runs may use the dev default; CI must provide a real key, and an
+    empty key is never accepted (an unset GitHub secret arrives as an empty string)."""
+    k = os.environ.get("GMO_SIGNING_KEY")
+    if k is None and os.environ.get("GITHUB_ACTIONS") != "true":
+        k = "dev-only-signing-key"
+    if not k or len(k) < 16:
+        raise RuntimeError("GMO_SIGNING_KEY is missing or too short; refusing to sign or verify")
+    return k.encode()
 
 
 def _canon(rec: dict) -> bytes:

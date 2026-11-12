@@ -17,6 +17,11 @@ dependencies = [
 [project.scripts]
 gmo = "govpipeline.cli:main"
 
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.44.2",
+]
+
 [dependency-groups]
 dev = ["pytest"]
 
