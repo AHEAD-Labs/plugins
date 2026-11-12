@@ -25,7 +25,8 @@ def build_remote():
                               scope="backend:read", ttl=120))
     return build_server(
         backend, lambda: get_access_token().subject, transport="streamable-http",
-        host=u.hostname, port=u.port, streamable_http_path=u.path,
+        host=u.hostname, port=u.port or (443 if u.scheme == "https" else 80),
+        streamable_http_path=u.path,
         stateless_http=True, json_response=True,
         token_verifier=GatewayTokenVerifier(audience=endpoint),
         auth=AuthSettings(issuer_url=AnyHttpUrl(idp.ISSUER), resource_server_url=AnyHttpUrl(endpoint),
