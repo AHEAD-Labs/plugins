@@ -1,0 +1,6 @@
+[
+ {"id":"alice-lists-all","user":"alice","tool":"list_incidents","args":{},"expect_ok":true,"list_key":"incidents","expect_count":3},
+ {"id":"bob-lists-own","user":"bob","tool":"list_incidents","args":{},"expect_ok":true,"list_key":"incidents","expect_count":1},
+ {"id":"alice-get","user":"alice","tool":"get_incident","args":{"incident_id":"INC-101"},"expect_ok":true,"expect_field":["severity","sev2"]},
+ {"id":"bob-denied-other","user":"bob","tool":"get_incident","args":{"incident_id":"INC-101"},"expect_ok":false}
+]

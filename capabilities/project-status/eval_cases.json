@@ -1,0 +1,8 @@
+[
+ {"id":"alice-lists-all","user":"alice","tool":"list_projects","args":{},"expect_ok":true,"list_key":"projects","expect_count":4},
+ {"id":"bob-lists-own","user":"bob","tool":"list_projects","args":{},"expect_ok":true,"list_key":"projects","expect_count":1},
+ {"id":"mallory-lists-none","user":"mallory","tool":"list_projects","args":{},"expect_ok":true,"list_key":"projects","expect_count":0},
+ {"id":"alice-status","user":"alice","tool":"get_project_status","args":{"project_id":"PRJ-003"},"expect_ok":true,"expect_field":["status","blocked"]},
+ {"id":"bob-denied-other-project","user":"bob","tool":"get_project_status","args":{"project_id":"PRJ-002"},"expect_ok":false},
+ {"id":"unknown-project-same-error","user":"alice","tool":"get_project_status","args":{"project_id":"PRJ-999"},"expect_ok":false}
+]

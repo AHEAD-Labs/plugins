@@ -1,0 +1,79 @@
+# Capability pipeline: PR = check only, merge = publish to registry, then deploy + catalogue.
+# NOT YET RUN: this repo is not on GitHub. Registry here is a `registry` branch (demo stand-in
+# for Artifactory / GitHub Packages / a container registry).
+name: capability-release
+on:
+  pull_request:
+    paths: ["capabilities/**", "src/**", "pyproject.toml"]
+  push:
+    branches: [main]
+    paths: ["capabilities/**", "src/**", "pyproject.toml"]
+
+permissions:
+  contents: read
+
+jobs:
+  # 1. PR: run every check, publish nothing. Result shows on the PR for reviewers.
+  pr-checks:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: Fetch registry (read-only, for the version-bump check)
+        run: git clone --depth 1 --branch registry "${{ github.server_url }}/${{ github.repository }}" .gmo/registry || mkdir -p .gmo/registry
+      - run: uv run gmo --ws .gmo release --dry-run --only-new
+        env:
+          GMO_PR: "${{ github.repository }}#${{ github.event.number }}"
+
+  # 2. Merge to main: rebuild from the merged commit and write the signed release.
+  release:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production          # protected environment: optional extra approval click
+    concurrency: registry-write      # one registry writer at a time
+    permissions:
+      contents: write                # push to the registry branch
+    outputs:
+      released: ${{ steps.rel.outputs.released }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - name: Fetch registry
+        run: |
+          git clone --branch registry "${{ github.server_url }}/${{ github.repository }}" .gmo/registry \
+            || (mkdir -p .gmo/registry && git -C .gmo/registry init -b registry)
+      - id: rel
+        run: |
+          uv run gmo --ws .gmo release --only-new | tee out.txt
+          echo "released=$(grep -c '^approved' out.txt)" >> "$GITHUB_OUTPUT"
+        env:
+          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}   # only this job can sign
+          GMO_PR: ${{ github.sha }}
+      - name: Push new releases (append only)
+        if: steps.rel.outputs.released != '0'
+        working-directory: .gmo/registry
+        run: |
+          git config user.name "gmo-release-bot" && git config user.email "gmo-release-bot@users.noreply.github.com"
+          git add -A && git commit -m "release from ${{ github.sha }}"
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:registry
+
+  # 3. Deploy to the platform(s) and regenerate the catalogue. Separate job: a failed deploy
+  #    never leaves the registry half-written.
+  deploy:
+    needs: release
+    if: needs.release.outputs.released != '0'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: git clone --depth 1 --branch registry "${{ github.server_url }}/${{ github.repository }}" .gmo/registry
+      - name: Deploy (simulated platform in this MVP; MuleSoft/AWS/KPaaS steps go here)
+        run: echo "uv run gmo --ws .gmo deploy <version> --cap <id>   # per platform"
+      - run: uv run gmo --ws .gmo catalogue
+      - uses: actions/upload-artifact@v4
+        with: { name: catalogue, path: .gmo/catalogue }

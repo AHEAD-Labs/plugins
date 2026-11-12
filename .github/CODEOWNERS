@@ -1,0 +1,7 @@
+# Every capability change needs its owner AND the platform/security team to approve.
+# Replace the placeholder teams with real GitHub teams.
+/capabilities/            @your-org/capability-reviewers @your-org/platform-security
+/src/                     @your-org/capability-reviewers
+/src/govpipeline/         @your-org/platform-security
+/src/platform_gateway/    @your-org/platform-security
+/.github/                 @your-org/platform-security

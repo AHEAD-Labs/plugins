@@ -1,0 +1,31 @@
+[project]
+name = "governed-mcp-onboarding"
+version = "0.1.0"
+description = "MVP: register one custom MCP, run it locally + remotely, discover via a catalogue, distribute to Codex."
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.2,<2",
+    "uvicorn",
+    "httpx",
+    "pyjwt",
+    "cryptography",
+    "pyyaml",
+    "pydantic>=2",
+    "starlette",
+]
+
+[project.scripts]
+gmo = "govpipeline.cli:main"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/project_status", "src/incident_lookup", "src/platform_gateway", "src/backend_service", "src/govpipeline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

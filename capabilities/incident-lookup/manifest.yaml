@@ -1,0 +1,22 @@
+capability_id: ahead.incident-lookup
+python_package: incident_lookup
+name: Incident Lookup
+description: Read-only incident listing and lookup (synthetic data). Local-only example.
+owner:
+  team: eTech Platform (placeholder)
+  contact: owner@example.invalid
+version: 0.1.0
+audience: [engineering-all]
+classification: internal
+tools: [list_incidents, get_incident]
+deployments:
+  - id: local
+    transport: stdio
+    package:
+      type: python-wheel
+      entrypoint: incident_lookup.stdio_main
+    auth:
+      type: os-user
+distribution:
+  - oasis
+  - openai-codex-plugin
