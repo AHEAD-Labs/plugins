@@ -1,0 +1,114 @@
+{
+  "contract": "provisional-oasis-compatible/v0 (UNCONFIRMED)",
+  "generated_at": "2026-11-13T02:32:17Z",
+  "entries": [
+    {
+      "capability_id": "ahead.incident-lookup",
+      "name": "Incident Lookup",
+      "description": "Read-only incident listing and lookup (synthetic data). Local-only example.",
+      "owner": {
+        "contact": "owner@example.invalid",
+        "team": "eTech Platform (placeholder)"
+      },
+      "classification": "internal",
+      "audience": [
+        "engineering-all"
+      ],
+      "version": "0.1.0",
+      "status": "approved",
+      "released_versions": [
+        {
+          "version": "0.1.0",
+          "status": "approved"
+        }
+      ],
+      "schema_digest": "cacd10e9a344e32df86be0e5f893ca909c656437be7af36baecd3c538c03fc80",
+      "artifact_sha256": "26bf34419826eefe57f43a876a2cc735cb51258620265fc3de295980fa073b86",
+      "evidence": {
+        "evaluation_sha256": "c86d26e88146a3a0f09029eb4a4768559406d21be564d2e148425d9f3920fdce",
+        "approved_by": "elnamir-ahead",
+        "pipeline_run": "43349216644",
+        "approved_at": "2026-11-13T02:02:20Z"
+      },
+      "install": {
+        "local": {
+          "transport": "stdio",
+          "artifact": {
+            "filename": "incident_lookup_mcp-0.1.0-py3-none-any.whl",
+            "sha256": "26bf34419826eefe57f43a876a2cc735cb51258620265fc3de295980fa073b86",
+            "size": 3851
+          },
+          "note": "install on a laptop with `gmo install-local`"
+        }
+      },
+      "distribution": [
+        "oasis",
+        "openai-codex-plugin"
+      ],
+      "note": "Catalogue status is informational. Revocation is enforced at the gateway."
+    },
+    {
+      "capability_id": "ahead.project-status",
+      "name": "Project Status",
+      "description": "Read-only project listing and status lookup (synthetic data).",
+      "owner": {
+        "contact": "owner@example.invalid",
+        "team": "eTech Platform (placeholder)"
+      },
+      "classification": "internal",
+      "audience": [
+        "engineering-all"
+      ],
+      "version": "0.1.1",
+      "status": "approved",
+      "released_versions": [
+        {
+          "version": "0.1.0",
+          "status": "approved"
+        },
+        {
+          "version": "0.1.1",
+          "status": "approved"
+        }
+      ],
+      "schema_digest": "9d01f961c54780604f7295340237af32e55b4342f948f13d9b1882ed8de0ba43",
+      "artifact_sha256": "e05d8aa605bdee847be806e27ab2eefd5ec94e774104b51e72387e183d1e9d14",
+      "evidence": {
+        "evaluation_sha256": "b7384711fe0a2add01dd572aa715934ac41f281299b06ce4c602782292b6dc84",
+        "approved_by": "elnamir-ahead",
+        "pipeline_run": "43352260581",
+        "approved_at": "2026-11-13T02:27:25Z"
+      },
+      "install": {
+        "local": {
+          "transport": "stdio",
+          "artifact": {
+            "filename": "project_status_mcp-0.1.1-py3-none-any.whl",
+            "sha256": "e05d8aa605bdee847be806e27ab2eefd5ec94e774104b51e72387e183d1e9d14",
+            "size": 5262
+          },
+          "note": "install on a laptop with `gmo install-local`"
+        },
+        "remote": {
+          "transport": "streamable-http",
+          "endpoint": "https://p2zct3rhl4.execute-api.us-east-1.amazonaws.com/mcp",
+          "auth": {
+            "type": "oauth2-bearer",
+            "issuer": "https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0",
+            "audience": "api://9f5d8242-f873-42b8-b521-3e47e08f4d71",
+            "scopes": [
+              "api://9f5d8242-f873-42b8-b521-3e47e08f4d71/project-status:read"
+            ],
+            "codex_client_id": "cbafe554-ca44-459c-a2b8-16a63764c738"
+          },
+          "platform": "aws"
+        }
+      },
+      "distribution": [
+        "oasis",
+        "openai-codex-plugin"
+      ],
+      "note": "Catalogue status is informational. Revocation is enforced at the gateway."
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "project-status-remote": {
+      "url": "https://p2zct3rhl4.execute-api.us-east-1.amazonaws.com/mcp",
+      "bearer_token_env_var": "PROJECT_STATUS_TOKEN"
+    }
+  }
+}

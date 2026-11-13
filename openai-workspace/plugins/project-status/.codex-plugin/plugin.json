@@ -1,0 +1,7 @@
+{
+  "name": "project-status",
+  "version": "0.1.1",
+  "description": "Read-only project listing and status lookup (synthetic data).",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
