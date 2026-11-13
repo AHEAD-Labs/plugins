@@ -5,7 +5,7 @@
 Idempotent. Creates/updates only gmo-* resources. Runs the platform selfcheck against the LIVE
 endpoint and exits non-zero if it fails.
 """
-import argparse, asyncio, json, os, secrets, sys, time
+import argparse, asyncio, base64, hashlib, json, os, secrets, sys, time
 
 sys.path.insert(0, os.path.dirname(__file__))
 from botocore.exceptions import ClientError
@@ -96,7 +96,13 @@ def deploy(s, registry_dir, cap, ver, workdir, entra=None):
     if env["GMO_REMOTE_ENDPOINT"] != endpoint:
         env["GMO_REMOTE_ENDPOINT"] = endpoint
         lam.update_function_configuration(FunctionName=FUNCTION, Environment={"Variables": env}); wait_ready(lam, FUNCTION)
-    return {"platform": "aws", "capability_id": cap, "version": ver, "endpoint": endpoint,
+    want = base64.b64encode(hashlib.sha256(open(zpath, "rb").read()).digest()).decode()
+    live = lam.get_function_configuration(FunctionName=FUNCTION)["CodeSha256"]
+    if want != live:
+        raise RuntimeError(f"deployed code hash {live} != approved artifact {want}")
+    return {"platform": "aws", "capability_id": cap, "code_sha256_verified": True,
+            **({"entra": {"issuer": entra["issuer"], "audience": entra["api_audience"], "scope": entra["scope"],
+                          "codex_client_id": entra["codex_client_id"]}} if entra else {}), "version": ver, "endpoint": endpoint,
             "function": FUNCTION, "api_id": api["ApiId"], "artifact_sha256": sha, "account": acct,
             "region": REGION, "deployed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
 
@@ -118,6 +124,19 @@ async def selfcheck(endpoint, secret):
     async with mc.http_session(endpoint, idp.mint("bob", endpoint)) as sess:
         good, data = await mc.call(sess, "get_project_status", project_id="PRJ-002")
         ok("bob denied PRJ-002", not good)
+    return out
+
+
+async def selfcheck_ci(endpoint):
+    """CI has no signed-in user, so only prove what a caller WITHOUT a valid Entra token sees."""
+    from govpipeline import mcpclient as mc
+    from platform_gateway import idp
+    os.environ["GMO_IDP_SECRET"] = "x" * 32
+    out = []
+    ok = lambda n, p, d="": out.append({"check": n, "passed": bool(p), "detail": d})
+    ok("no token -> 401", await mc.http_status(endpoint, None) == 401)
+    ok("garbage token -> 401", await mc.http_status(endpoint, "not-a-jwt") == 401)
+    ok("demo (HS256) token -> 401", await mc.http_status(endpoint, idp.mint("alice", endpoint)) == 401)
     return out
 
 
@@ -150,12 +169,15 @@ async def selfcheck_entra(endpoint, entra):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--profile"); ap.add_argument("--registry", required=True)
     ap.add_argument("--cap", default="ahead.project-status"); ap.add_argument("--version", required=True)
-    ap.add_argument("--work", default=".gmo/aws-work"); ap.add_argument("--state-out"); ap.add_argument("--entra", help="json from platforms/entra/setup.py")
+    ap.add_argument("--work", default=".gmo/aws-work"); ap.add_argument("--state-out"); ap.add_argument("--ci", action="store_true", help="no signed-in user: negative checks only"); ap.add_argument("--entra", help="json from platforms/entra/setup.py")
     a = ap.parse_args(); s = session(a.profile)
+    if a.version == "latest":
+        from govpipeline.registry import Registry
+        a.version = Registry(a.registry).versions(a.cap)[-1]
     ent = json.load(open(a.entra)) if a.entra else None
     st = deploy(s, a.registry, a.cap, a.version, a.work, ent); print(json.dumps(st, indent=2))
     time.sleep(8)
-    res = asyncio.run(selfcheck_entra(st["endpoint"], ent) if ent else selfcheck(st["endpoint"], idp_secret(s)))
+    res = asyncio.run(selfcheck_ci(st["endpoint"]) if a.ci else selfcheck_entra(st["endpoint"], ent) if ent else selfcheck(st["endpoint"], idp_secret(s)))
     for r in res: print(("PASS " if r["passed"] else "FAIL ") + r["check"], r["detail"])
     if a.state_out:
         os.makedirs(os.path.dirname(a.state_out), exist_ok=True); json.dump({**st, "selfcheck": res}, open(a.state_out, "w"), indent=2)
