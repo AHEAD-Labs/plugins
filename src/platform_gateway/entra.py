@@ -26,11 +26,11 @@ def _client() -> PyJWKClient:
     return _jwks
 
 
-def verify(token: str) -> dict:
+def verify(token: str, audience: str | None = None) -> dict:
     key = _client().get_signing_key_from_jwt(token).key
-    c = jwt.decode(token, key, algorithms=["RS256"], audience=os.environ["GMO_ENTRA_AUDIENCE"],
+    c = jwt.decode(token, key, algorithms=["RS256"], audience=audience or os.environ["GMO_ENTRA_AUDIENCE"],
                    issuer=issuer(), options={"require": ["exp", "aud", "iss"]})
     user = c.get("preferred_username") or c.get("upn") or c.get("oid")
     if not user:
         raise jwt.InvalidTokenError("no user identity in token")
-    return {"sub": user, "scope": c.get("scp", ""), "exp": c["exp"], "oid": c.get("oid")}
+    return {"sub": user, "scope": c.get("scp", ""), "exp": c["exp"], "oid": c.get("oid"), "azp": c.get("azp")}
