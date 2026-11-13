@@ -1,5 +1,5 @@
 """Stage 1: common checks (every capability). Stage 2: platform checks (per deployment platform)."""
-import json, os
+import json, os, re
 from dataclasses import asdict, dataclass
 from urllib.parse import urlparse
 
@@ -69,6 +69,34 @@ def platform_checks(m: Manifest, unpacked: str) -> list[Check]:
                          ",".join(f"{x['case']}={x['status']}" for x in res)))
     except Exception:
         out.append(Check("platform", "gateway-rejects-unauthorized", False, r.stderr[-200:]))
+    return out
+
+
+def common_agent(m: Manifest) -> list[Check]:
+    return [Check("common", "tools-declared", bool(m.tools), ",".join(m.tools))]
+
+
+_DIGEST = re.compile(r"^[\w.\-/:]+@sha256:[0-9a-f]{64}$")
+
+
+def agent_checks(m: Manifest) -> list[Check]:
+    """Platform checks for an agent that runs behind a platform gateway (no wheel to inspect)."""
+    d = m.deployments[0]
+    out = [
+        Check("platform", "agent-image-pinned-by-digest", bool(_DIGEST.match(d.image or "")), d.image or ""),
+        Check("platform", "gateway-image-pinned-by-digest", bool(_DIGEST.match(d.gateway_image or "")), d.gateway_image or ""),
+        Check("platform", f"{d.id}:tls", (d.endpoint or "").startswith("https://"), d.endpoint or ""),
+        Check("platform", f"{d.id}:entra-oauth-required", d.auth.type == "oauth2-bearer"
+              and "login.microsoftonline.com" in (d.auth.issuer or ""), d.auth.issuer or d.auth.type),
+        Check("platform", f"{d.id}:audience-is-entra-api", (d.auth.audience or "").startswith("api://"), d.auth.audience or ""),
+        Check("platform", f"{d.id}:scopes-declared", bool(d.auth.scopes), ",".join(d.auth.scopes)),
+        Check("platform", f"{d.id}:allowed-callers-declared", bool(d.auth.allowed_callers),
+              f"{len(d.auth.allowed_callers)} calling app(s)"),
+        Check("platform", f"{d.id}:agent-reachable-only-through-gateway", d.ingress == "gateway-only", str(d.ingress)),
+        Check("platform", "restricted-not-externally-distributed",
+              not (m.classification == "restricted" and "openai-codex-plugin" in m.distribution),
+              f"{m.classification} -> {m.distribution}"),
+    ]
     return out
 
 

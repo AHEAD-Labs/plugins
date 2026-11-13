@@ -1,6 +1,6 @@
 """One implementation, any transport. Hosts (stdio launcher, platform gateway) inject
 the backend, the identity source and transport-specific FastMCP settings."""
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
@@ -12,8 +12,14 @@ from .data import AccessDenied, NotFound
 DENIED_MSG = "Project not found or access denied"
 
 
+AGENT_ID = "ahead.tag-compliance"
+
+
 def build_server(backend: Backend, identity: Callable[[], str], *, transport: str,
+                 agent: Callable[[str, str], Awaitable[str]] | None = None,
                  **fastmcp_kwargs: Any) -> FastMCP:
+    """`agent(request, answer)` calls the governed Azure agent as the signed-in user. Only the remote,
+    Entra-protected host provides it; on any other transport the tool exists (same schema) but refuses."""
     mcp = FastMCP("project-status", **fastmcp_kwargs)
 
     @mcp.tool()
@@ -38,6 +44,29 @@ def build_server(backend: Backend, identity: Callable[[], str], *, transport: st
         audit.record(source="mcp", user=user, tool="get_project_status", transport=transport,
                      project_id=project_id, decision="allow")
         return result
+
+    @mcp.tool()
+    async def check_tag_compliance(request: str, answer: str = "") -> dict[str, Any]:
+        """Ask the Azure tag-compliance agent which resources in a resource group lack an owner tag.
+        If the agent asks for a subscription or resource group, send the user's reply in `answer`."""
+        user = identity()
+        if agent is None:
+            audit.record(source="mcp", user=user, tool="check_tag_compliance", transport=transport,
+                         decision="deny", reason="agent_needs_signed_in_remote_session")
+            raise ToolError("The tag-compliance agent is only available on the signed-in remote server")
+        try:
+            text = await agent(request, answer)
+        except PermissionError as e:
+            audit.record(source="mcp", user=user, tool="check_tag_compliance", transport=transport,
+                         decision="deny", reason=f"{AGENT_ID}: {e}")
+            raise ToolError("The agent refused this request")
+        except Exception as e:
+            audit.record(source="mcp", user=user, tool="check_tag_compliance", transport=transport,
+                         decision="deny", reason=f"{AGENT_ID}: unavailable ({type(e).__name__})")
+            raise ToolError("The agent is not available right now")
+        audit.record(source="mcp", user=user, tool="check_tag_compliance", transport=transport,
+                     decision="allow", reason=f"called {AGENT_ID} on the user's behalf")
+        return {"agent": AGENT_ID, "answer": text}
 
     return mcp
 
