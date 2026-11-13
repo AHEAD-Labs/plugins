@@ -78,33 +78,55 @@ jobs:
           git add -A && git commit -m "release from ${{ github.sha }}"
           git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:registry
 
-  # 3. Deploy to the platform(s) and regenerate the catalogue. Separate job: a failed deploy
-  #    never leaves the registry half-written.
+  # 3. Deploy the approved release to AWS and publish the catalogue. A separate job, so a failed
+  #    deploy never leaves the registry half-written. No stored AWS keys: OIDC role, gmo-* only.
   deploy:
     needs: release
     if: needs.release.outputs.released != '0'
     runs-on: ubuntu-latest
     environment: production
+    permissions:
+      id-token: write      # request the OIDC token for AWS
+      contents: write      # push the catalogue branch
+    env:
+      GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync
+      - run: uv sync --extra aws
       - name: Fetch registry
         run: |
           URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          if git ls-remote --exit-code --heads "$URL" registry >/dev/null; then
-            git clone --branch registry "$URL" .gmo/registry
-          else
-            mkdir -p .gmo/registry && git -C .gmo/registry init -b registry
-          fi
-      - name: Deploy (simulated platform in this MVP; MuleSoft/AWS/KPaaS steps go here)
-        run: echo "uv run gmo --ws .gmo deploy <version> --cap <id>   # per platform"
-      - name: Verify registry before building the catalogue
-        env:
-          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
+          git clone --branch registry "$URL" .gmo/registry
+      - name: Verify registry (signature + artifact digest)
         run: uv run gmo --ws .gmo verify
-      - run: uv run gmo --ws .gmo catalogue
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/gmo-github-deploy
+          aws-region: us-east-1
+      - name: Entra settings (identifiers, not secrets)
+        run: |
+          python3 - <<'PY'
+          import json, os
+          json.dump({"tenant_id": os.environ["T"], "api_client_id": os.environ["C"], "api_audience": "api://" + os.environ["C"],
+                     "scope": f"api://{os.environ['C']}/project-status:read", "codex_client_id": os.environ["X"],
+                     "issuer": f"https://login.microsoftonline.com/{os.environ['T']}/v2.0"}, open(".gmo/entra.json", "w"))
+          PY
         env:
-          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
-      - uses: actions/upload-artifact@v4
-        with: { name: catalogue, path: .gmo/catalogue }
+          T: ${{ vars.ENTRA_TENANT_ID }}
+          C: ${{ vars.ENTRA_API_CLIENT_ID }}
+          X: ${{ vars.ENTRA_CODEX_CLIENT_ID }}
+      - name: Deploy latest approved project-status to AWS, then run the live checks
+        run: |
+          uv run python platforms/aws/deploy.py --registry .gmo/registry --cap ahead.project-status \
+            --version latest --entra .gmo/entra.json --ci --work .gmo/aws-work \
+            --state-out .gmo/deployments/aws-ahead.project-status.json
+      - name: Build the remote catalogue (feed + OpenAI-workspace marketplace)
+        run: uv run gmo --ws .gmo catalogue --remote-only
+      - name: Publish the catalogue branch
+        run: |
+          URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          rm -rf cat && mkdir cat && cp -r .gmo/catalogue/. cat/ && cd cat
+          git init -q -b catalogue && git config user.name "gmo-release-bot" && git config user.email "gmo-release-bot@users.noreply.github.com"
+          git add -A && git commit -q -m "catalogue from ${{ github.sha }}"
+          git push -f "$URL" HEAD:catalogue

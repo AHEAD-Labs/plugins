@@ -21,7 +21,7 @@ def _status(cap, ver) -> str:
     return "suspended" if revocations.check(cap, ver, None) else "approved"
 
 
-def build_feed(ws: Workspace) -> dict:
+def build_feed(ws: Workspace, remote_only: bool = False) -> dict:
     reg = Registry(ws.registry)
     entries = []
     for cap in reg.capabilities():
@@ -30,13 +30,22 @@ def build_feed(ws: Workspace) -> dict:
         remote, local = deployer.state(ws, f"remote-{cap}"), deployer.state(ws, f"local-{cap}")
         rec = reg.load(cap, remote.get("active_version") or local.get("version") or vers[-1])
         install = {}
+        aws = deployer.state(ws, f"aws-{cap}")  # real endpoint of the platform deployment, when there is one
         for d in rec["deployments"]:
-            if d["transport"] == "stdio":
+            if d["transport"] == "stdio" and remote_only:
+                install["local"] = {"transport": "stdio", "artifact": rec["artifact"],
+                                    "note": "install on a laptop with `gmo install-local`"}
+            elif d["transport"] == "stdio":
                 install["local"] = {"transport": "stdio", "command": local.get("command", "python"),
                                     "args": local.get("args", ["-m", d["package"]["entrypoint"]]),
                                     "env": local.get("env", {}), "artifact": rec["artifact"]}
             else:
-                install["remote"] = {"transport": "streamable-http", "endpoint": d["endpoint"], "auth": d["auth"]}
+                ent = aws.get("entra")
+                auth = ({"type": "oauth2-bearer", "issuer": ent["issuer"], "audience": ent["audience"],
+                         "scopes": [ent["scope"]], "codex_client_id": ent["codex_client_id"]}
+                        if ent else d["auth"])
+                install["remote"] = {"transport": "streamable-http", "endpoint": aws.get("endpoint", d["endpoint"]),
+                                     "auth": auth, **({"platform": "aws"} if aws else {})}
         entries.append({
             "capability_id": cap, "name": rec["name"], "description": rec["description"],
             "owner": rec["owner"], "classification": rec["classification"], "audience": rec["audience"],
@@ -107,12 +116,12 @@ def write_marketplace(base: str, name: str, display: str, plugin_names: list[str
     return path
 
 
-def publish(ws: Workspace) -> dict:
+def publish(ws: Workspace, remote_only: bool = False) -> dict:
     """Two marketplaces, both generated from the registry:
     - catalogue/            LOCAL marketplace: Codex on a laptop reads it (local + remote servers)
     - catalogue/openai-workspace/   what an admin imports into the OpenAI workspace from GitHub
                                     (remote servers only)"""
-    feed = build_feed(ws)
+    feed = build_feed(ws, remote_only)
     os.makedirs(ws.catalogue, exist_ok=True)
     openai_base = os.path.join(ws.catalogue, "openai-workspace")
     for d in ("plugins", ".agents", "openai-workspace"):
@@ -122,11 +131,13 @@ def publish(ws: Workspace) -> dict:
     for e in feed["entries"]:
         if "openai-codex-plugin" not in e["distribution"]:
             continue
-        build_codex_plugin(ws, e, ws.catalogue)
-        local.append(e["capability_id"].split(".")[-1])
+        if not remote_only:  # local plugins carry laptop paths, so only a laptop run can build them
+            build_codex_plugin(ws, e, ws.catalogue)
+            local.append(e["capability_id"].split(".")[-1])
         if build_codex_plugin(ws, e, openai_base, only="remote"):
             openai.append(e["capability_id"].split(".")[-1])
-    write_marketplace(ws.catalogue, "ahead-local", "AHEAD (local)", local)
+    if local:
+        write_marketplace(ws.catalogue, "ahead-local", "AHEAD (local)", local)
     if openai:
         write_marketplace(openai_base, "ahead-openai-workspace", "AHEAD (OpenAI workspace)", openai)
     return feed

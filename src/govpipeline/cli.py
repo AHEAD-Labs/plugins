@@ -28,7 +28,8 @@ def main(argv=None):
     sp.add_parser("backend", help="start the synthetic backend API")
     sp.add_parser("verify", help="check signature + artifact digest of every release in the registry")
     sp.add_parser("stop", help="stop platform processes")
-    sp.add_parser("catalogue", help="regenerate discovery feed + Codex plugin bundle")
+    cg = sp.add_parser("catalogue", help="regenerate discovery feed + Codex plugin bundle")
+    cg.add_argument("--remote-only", action="store_true", help="CI mode: feed + OpenAI-workspace marketplace only")
     s = sp.add_parser("suspend"); s.add_argument("--cap", default="ahead.project-status")
     s.add_argument("--version"); s.add_argument("--user"); s.add_argument("--reason", required=True)
     l = sp.add_parser("lift"); l.add_argument("--cap", default="ahead.project-status")
@@ -78,7 +79,7 @@ def main(argv=None):
     elif a.cmd == "stop":
         deployer.stop_all(ws)
     elif a.cmd == "catalogue":
-        feed = catalogue.publish(ws)
+        feed = catalogue.publish(ws, a.remote_only)
         print(f"{len(feed['entries'])} entries -> {ws.catalogue}/feed.json")
     elif a.cmd == "suspend":
         print(revocations.suspend(a.cap, version=a.version, user=a.user, reason=a.reason,
