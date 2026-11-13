@@ -7,7 +7,7 @@ description: Read-only project listing and status lookup (synthetic data).
 owner:
   team: eTech Platform (placeholder)
   contact: owner@example.invalid
-version: 0.1.0
+version: 0.1.1
 audience: [engineering-all]        # who may discover/use it
 classification: internal           # public | internal | confidential | restricted
 tools: [list_projects, get_project_status]

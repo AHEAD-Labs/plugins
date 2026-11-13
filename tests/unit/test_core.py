@@ -21,7 +21,8 @@ def test_acl():
 def test_manifest_valid_and_strict(tmp_path):
     m = load(MANIFEST)
     assert m.capability_id == "ahead.project-status" and {d.transport for d in m.deployments} == {"stdio", "streamable-http"}
-    bad = open(MANIFEST).read().replace("version: 0.1.0", "version: v1")
+    import re
+    bad = re.sub(r"(?m)^version: .*$", "version: v1", open(MANIFEST).read())
     p = tmp_path / "m.yaml"; p.write_text(bad)
     with pytest.raises(Exception): load(str(p))
 
@@ -43,7 +44,8 @@ def test_suspension_scoping(tmp_path, monkeypatch):
     assert revocations.check("c", "2.0.0", "u") is None
 
 
-def test_registry_signature_and_digest(tmp_path):
+def test_registry_signature_and_digest(tmp_path, monkeypatch):
+    monkeypatch.setenv("GMO_SIGNING_KEY", "unit-test-only-signing-key-0123456789")  # never depend on a CI secret
     reg = regmod.Registry(str(tmp_path))
     wheel = tmp_path / "x.whl"; wheel.write_bytes(b"abc")
     from govpipeline.util import sha256_file
