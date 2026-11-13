@@ -1,0 +1,115 @@
+{
+  "approval": {
+    "approved_at": "2026-11-13T02:02:20Z",
+    "approved_by": "elnamir-ahead",
+    "checks": [
+      {
+        "detail": "schema + semver ok",
+        "name": "manifest-valid",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "ahead.incident-lookup@0.1.0",
+        "name": "version-unreleased",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "engineering-all",
+        "name": "audience-declared",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "5 passed in 0.09s",
+        "name": "unit-tests",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "artifact=0.1.0 manifest=0.1.0",
+        "name": "artifact-version-matches-manifest",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "artifact=['get_incident', 'list_incidents']",
+        "name": "tools-match-manifest",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "4/4 cases",
+        "name": "evaluation-passed",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "internal -> ['oasis', 'openai-codex-plugin']",
+        "name": "restricted-not-externally-distributed",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "local-only capability: gateway checks not applicable",
+        "name": "no-remote-deployment",
+        "passed": true,
+        "stage": "platform"
+      }
+    ],
+    "manifest_sha256": "9fea09e00573d615e722c597c94f6cf22cea1b94370a3052b177b53a6e71176b",
+    "pipeline_run": "43349216644",
+    "pull_request": "348befb8216df467c2de2524f94b1cab4fcf4003",
+    "skill_sha256": "d3447d38ed7919ec484a249150fa049744b96028bfbd8c35e6b16e7fae385b0c",
+    "source_ref": "348befb8216df467c2de2524f94b1cab4fcf4003"
+  },
+  "artifact": {
+    "filename": "incident_lookup_mcp-0.1.0-py3-none-any.whl",
+    "sha256": "26bf34419826eefe57f43a876a2cc735cb51258620265fc3de295980fa073b86",
+    "size": 3851
+  },
+  "audience": [
+    "engineering-all"
+  ],
+  "capability_id": "ahead.incident-lookup",
+  "classification": "internal",
+  "deployments": [
+    {
+      "auth": {
+        "scopes": [],
+        "type": "os-user"
+      },
+      "id": "local",
+      "package": {
+        "entrypoint": "incident_lookup.stdio_main",
+        "type": "python-wheel"
+      },
+      "transport": "stdio"
+    }
+  ],
+  "description": "Read-only incident listing and lookup (synthetic data). Local-only example.",
+  "distribution": [
+    "oasis",
+    "openai-codex-plugin"
+  ],
+  "evaluation": {
+    "file": "evaluation.json",
+    "passed": true,
+    "sha256": "c86d26e88146a3a0f09029eb4a4768559406d21be564d2e148425d9f3920fdce",
+    "suite": "golden/v1"
+  },
+  "name": "Incident Lookup",
+  "owner": {
+    "contact": "owner@example.invalid",
+    "team": "eTech Platform (placeholder)"
+  },
+  "schema_digest": "cacd10e9a344e32df86be0e5f893ca909c656437be7af36baecd3c538c03fc80",
+  "signature": "f70e8a4de609a04037020c413d2460de03bae2a82496ffd366f6b0171222f8ac",
+  "status": "approved",
+  "tools": [
+    "list_incidents",
+    "get_incident"
+  ],
+  "version": "0.1.0"
+}

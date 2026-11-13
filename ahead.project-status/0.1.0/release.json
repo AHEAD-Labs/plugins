@@ -1,0 +1,152 @@
+{
+  "approval": {
+    "approved_at": "2026-11-13T02:02:22Z",
+    "approved_by": "elnamir-ahead",
+    "checks": [
+      {
+        "detail": "schema + semver ok",
+        "name": "manifest-valid",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "ahead.project-status@0.1.0",
+        "name": "version-unreleased",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "engineering-all",
+        "name": "audience-declared",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "5 passed in 0.07s",
+        "name": "unit-tests",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "artifact=0.1.0 manifest=0.1.0",
+        "name": "artifact-version-matches-manifest",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "artifact=['get_project_status', 'list_projects']",
+        "name": "tools-match-manifest",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "6/6 cases",
+        "name": "evaluation-passed",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "http://127.0.0.1:8802/mcp",
+        "name": "remote:tls-or-loopback",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "oauth2-bearer",
+        "name": "remote:oauth-required",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "aud=http://127.0.0.1:8802/mcp",
+        "name": "remote:audience-bound-to-endpoint",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "project-status:read",
+        "name": "remote:scopes-declared",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "internal -> ['oasis', 'openai-codex-plugin']",
+        "name": "restricted-not-externally-distributed",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "no_token=401,wrong_audience=401,wrong_scope=401,garbage_token=401",
+        "name": "gateway-rejects-unauthorized",
+        "passed": true,
+        "stage": "platform"
+      }
+    ],
+    "manifest_sha256": "2954ad874a6efdd4067ab979cec9c0ff770b0493b3fa77153bf39d16545116bb",
+    "pipeline_run": "43349216644",
+    "pull_request": "348befb8216df467c2de2524f94b1cab4fcf4003",
+    "skill_sha256": "92ab6ea3c5cb5f939fcbe0e09bd4d4f411983f791f1bed7057ae2f2ccf45fd14",
+    "source_ref": "348befb8216df467c2de2524f94b1cab4fcf4003"
+  },
+  "artifact": {
+    "filename": "project_status_mcp-0.1.0-py3-none-any.whl",
+    "sha256": "484c118e836f0c434d7d2b411e2ce38962e0c91bfaae34992a658396aeeb5d29",
+    "size": 5264
+  },
+  "audience": [
+    "engineering-all"
+  ],
+  "capability_id": "ahead.project-status",
+  "classification": "internal",
+  "deployments": [
+    {
+      "auth": {
+        "scopes": [],
+        "type": "os-user"
+      },
+      "id": "local",
+      "package": {
+        "entrypoint": "project_status.stdio_main",
+        "type": "python-wheel"
+      },
+      "transport": "stdio"
+    },
+    {
+      "auth": {
+        "audience": "http://127.0.0.1:8802/mcp",
+        "issuer": "http://127.0.0.1:8802/idp",
+        "scopes": [
+          "project-status:read"
+        ],
+        "type": "oauth2-bearer"
+      },
+      "endpoint": "http://127.0.0.1:8802/mcp",
+      "id": "remote",
+      "transport": "streamable-http"
+    }
+  ],
+  "description": "Read-only project listing and status lookup (synthetic data).",
+  "distribution": [
+    "oasis",
+    "openai-codex-plugin"
+  ],
+  "evaluation": {
+    "file": "evaluation.json",
+    "passed": true,
+    "sha256": "81b947daf51a48bb17e26e64416d341c0a1bfceb40e432ba783bb10bb9ed6637",
+    "suite": "golden/v1"
+  },
+  "name": "Project Status",
+  "owner": {
+    "contact": "owner@example.invalid",
+    "team": "eTech Platform (placeholder)"
+  },
+  "schema_digest": "9d01f961c54780604f7295340237af32e55b4342f948f13d9b1882ed8de0ba43",
+  "signature": "93b821deb066880f0e841f73ed5ad3e2997d9e4b1c03fc6353be6794924d726e",
+  "status": "approved",
+  "tools": [
+    "list_projects",
+    "get_project_status"
+  ],
+  "version": "0.1.0"
+}

@@ -1,0 +1,25 @@
+{
+  "artifact_sha256": "26bf34419826eefe57f43a876a2cc735cb51258620265fc3de295980fa073b86",
+  "cases": [
+    {
+      "id": "alice-lists-all",
+      "passed": true
+    },
+    {
+      "id": "bob-lists-own",
+      "passed": true
+    },
+    {
+      "id": "alice-get",
+      "passed": true
+    },
+    {
+      "id": "bob-denied-other",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "ran_at": "2026-11-13T02:02:20Z",
+  "suite": "golden/v1",
+  "transport": "stdio"
+}

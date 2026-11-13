@@ -1,0 +1,56 @@
+[
+  {
+    "detail": "schema + semver ok",
+    "name": "manifest-valid",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "ahead.incident-lookup@0.1.0",
+    "name": "version-unreleased",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "engineering-all",
+    "name": "audience-declared",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "5 passed in 0.09s",
+    "name": "unit-tests",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "artifact=0.1.0 manifest=0.1.0",
+    "name": "artifact-version-matches-manifest",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "artifact=['get_incident', 'list_incidents']",
+    "name": "tools-match-manifest",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "4/4 cases",
+    "name": "evaluation-passed",
+    "passed": true,
+    "stage": "common"
+  },
+  {
+    "detail": "internal -> ['oasis', 'openai-codex-plugin']",
+    "name": "restricted-not-externally-distributed",
+    "passed": true,
+    "stage": "platform"
+  },
+  {
+    "detail": "local-only capability: gateway checks not applicable",
+    "name": "no-remote-deployment",
+    "passed": true,
+    "stage": "platform"
+  }
+]
