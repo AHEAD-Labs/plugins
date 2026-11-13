@@ -24,35 +24,51 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
     log += checks.common_pre(m, reg, run_tests)
     _gate(log)
 
-    # --- build the artifact, then derive everything else from the artifact itself
-    wheel, wheel_sha = build.build_wheel(m, os.path.join(ws.work, run_id))
-    unpacked = build.unpack(wheel, os.path.join(ws.work, run_id, "unpacked"))
-    schema = build.schema_info(unpacked, m.python_package)
-    log += checks.common_post(m, schema, schema["version"])
-    _gate(log)
-
-    # --- evaluation evidence
     base = os.path.dirname(os.path.abspath(manifest_path))
-    entry = m.deployment("stdio").package.entrypoint
-    evidence = evaluate.evaluate(unpacked, wheel_sha, os.path.join(ws.work, run_id), entry,
-                                 os.path.join(base, "eval_cases.json"))
-    log.append(checks.Check("common", "evaluation-passed", evidence["passed"],
-                            f"{sum(c['passed'] for c in evidence['cases'])}/{len(evidence['cases'])} cases"))
-    _gate(log)
+    wheel = None
+    if m.kind == "agent":
+        # no wheel: the artifact is the container image, pinned by digest in the signed record
+        d = m.deployments[0]
+        artifact = {"type": "container-image", "image": d.image, "gateway_image": d.gateway_image,
+                    "sha256": d.image.split("@sha256:")[-1]}
+        schema = {"digest": sha_tools(m.tools)}
+        log += checks.common_agent(m)
+        _gate(log)
+        evidence = evaluate.contract(m.tools, d.image, os.path.join(base, "eval_cases.json"))
+        log.append(checks.Check("common", "evaluation-passed", evidence["passed"],
+                                f"{sum(c['passed'] for c in evidence['cases'])}/{len(evidence['cases'])} contract cases"))
+        _gate(log)
+        log += checks.agent_checks(m)
+        _gate(log)
+    else:
+        # --- build the artifact, then derive everything else from the artifact itself
+        wheel, wheel_sha = build.build_wheel(m, os.path.join(ws.work, run_id))
+        unpacked = build.unpack(wheel, os.path.join(ws.work, run_id, "unpacked"))
+        schema = build.schema_info(unpacked, m.python_package)
+        log += checks.common_post(m, schema, schema["version"])
+        _gate(log)
 
-    # --- platform checks
-    log += checks.platform_checks(m, unpacked)
-    _gate(log)
+        # --- evaluation evidence
+        entry = m.deployment("stdio").package.entrypoint
+        evidence = evaluate.evaluate(unpacked, wheel_sha, os.path.join(ws.work, run_id), entry,
+                                     os.path.join(base, "eval_cases.json"))
+        log.append(checks.Check("common", "evaluation-passed", evidence["passed"],
+                                f"{sum(c['passed'] for c in evidence['cases'])}/{len(evidence['cases'])} cases"))
+        _gate(log)
+
+        # --- platform checks
+        log += checks.platform_checks(m, unpacked)
+        _gate(log)
+        artifact = {"filename": os.path.basename(wheel), "sha256": wheel_sha, "size": os.path.getsize(wheel)}
 
     # --- approve: immutable, signed release record
     rec = {
-        "capability_id": m.capability_id, "name": m.name, "description": m.description,
+        "capability_id": m.capability_id, "kind": m.kind, "name": m.name, "description": m.description,
         "owner": m.owner.model_dump(), "version": m.version, "audience": m.audience,
         "classification": m.classification, "tools": m.tools,
         "deployments": [d.model_dump(exclude_none=True) for d in m.deployments],
         "distribution": m.distribution,
-        "artifact": {"filename": os.path.basename(wheel), "sha256": wheel_sha,
-                     "size": os.path.getsize(wheel)},
+        "artifact": artifact,
         "schema_digest": schema["digest"],
         "evaluation": {"file": "evaluation.json", "sha256": sha256_json(evidence),
                        "suite": evidence["suite"], "passed": evidence["passed"]},
@@ -79,3 +95,7 @@ def _gate(log):
     failed = [c for c in log if not c.passed]
     if failed:
         raise ReleaseRejected(failed)
+
+
+def sha_tools(tools: list[str]) -> str:
+    return sha256_json(sorted(tools))

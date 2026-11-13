@@ -1,0 +1,30 @@
+# An agent capability: it ships as a container image (pinned by digest), runs on Azure Container Apps
+# behind the platform gateway in platforms/azure/gateway, and is reached over MCP with an Entra token.
+capability_id: ahead.tag-compliance
+kind: agent
+name: Tag Compliance Agent
+description: Inspects an Azure resource group for resources missing an owner tag. Read-only.
+owner:
+  team: eTech Platform (placeholder)
+  contact: owner@example.invalid
+version: 0.1.0
+audience: [engineering-all]
+classification: internal
+tools: [tag.inspect]
+deployments:
+  - id: azure-gateway
+    transport: streamable-http
+    endpoint: https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp
+    image: ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d
+    gateway_image: ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:13c925bbec7fd0913616cc7c203a33962d6eeaa971962891580b6f066a15209b
+    ingress: public          # becomes gateway-only once the agent's own endpoint is closed
+    auth:
+      type: oauth2-bearer
+      issuer: https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0
+      audience: api://51ef982d-d64a-4052-aebc-21c0232d0d9f
+      scopes: [tag-compliance:read]
+      allowed_callers:
+        - 9f5d8242-f873-42b8-b521-3e47e08f4d71   # gmo-project-status (the MCP, on behalf of the user)
+        - cbafe554-ca44-459c-a2b8-16a63764c738   # gmo-codex-client
+distribution:
+  - oasis

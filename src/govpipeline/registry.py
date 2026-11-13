@@ -33,13 +33,14 @@ class Registry:
     def exists(self, cap, ver) -> bool:
         return os.path.exists(os.path.join(self.dir(cap, ver), "release.json"))
 
-    def publish(self, rec: dict, wheel: str, evidence: dict[str, dict], files: list[str] = ()) -> str:
+    def publish(self, rec: dict, wheel: str | None, evidence: dict[str, dict], files: list[str] = ()) -> str:
         cap, ver = rec["capability_id"], rec["version"]
         if self.exists(cap, ver):
             raise FileExistsError(f"{cap}@{ver} already released (releases are immutable)")
         d = self.dir(cap, ver)
         os.makedirs(d)
-        shutil.copy(wheel, d)
+        if wheel:
+            shutil.copy(wheel, d)
         for f in files:
             shutil.copy(f, d)
         for name, body in evidence.items():
@@ -54,9 +55,10 @@ class Registry:
         rec = json.load(open(os.path.join(d, "release.json")))
         if not hmac.compare_digest(rec["signature"], sign(rec)):
             raise ValueError(f"release record signature invalid for {cap}@{ver}")
-        wheel = os.path.join(d, rec["artifact"]["filename"])
-        if sha256_file(wheel) != rec["artifact"]["sha256"]:
-            raise ValueError(f"artifact digest mismatch for {cap}@{ver}")
+        if rec["artifact"].get("type") != "container-image":  # an image is pinned by digest in the signed record
+            wheel = os.path.join(d, rec["artifact"]["filename"])
+            if sha256_file(wheel) != rec["artifact"]["sha256"]:
+                raise ValueError(f"artifact digest mismatch for {cap}@{ver}")
         if rec["status"] != "approved":
             raise ValueError(f"{cap}@{ver} is not approved")
         return rec
