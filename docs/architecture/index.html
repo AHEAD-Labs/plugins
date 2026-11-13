@@ -1,0 +1,129 @@
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'></head><body><title>Governed MCP Build Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{--page:#FFFFFF;--layer:#F7F8FA;--line:#D5D9E0;--ink:#111827;--sub:#6B7280;--wire:#374151;--blue:#2F5BEA;--indigo:#4F46E5;--pill:#0B5D63;--ok:#1F7A4D;--part:#B7791F;--gap:#C0392B;--exp:#8E44AD;color-scheme:light}
+html,body{background:#fff}
+body{margin:0;color:var(--ink);font-family:Arial,Helvetica,sans-serif;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px}
+h1{font-size:22px;margin:0 0 6px}p.lead{margin:0 0 14px;color:var(--sub);font-size:13px;max-width:900px;line-height:1.5}
+.legend{display:flex;flex-wrap:wrap;gap:14px 22px;margin:0 0 14px;font-size:12px;color:var(--ink);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:7px}.sw{width:14px;height:14px;border-radius:3px;border:2px solid}
+.ln{width:30px;border-top:2px dashed var(--wire)}.ln.g{border-top-color:var(--gap)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+.canvas{position:relative;width:2100px;height:1520px;background:#fff}
+.wires{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:2;pointer-events:none}
+.boundary{position:absolute;border:1.5px dashed #B8BEC8;border-radius:24px;background:#FBFBFC;z-index:0;box-sizing:border-box}
+.pill{position:absolute;left:18px;top:-14px;background:var(--pill);color:#fff;font-weight:700;font-size:14px;padding:6px 18px;border-radius:999px;white-space:nowrap}
+.layer{position:absolute;background:var(--layer);border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:6px;z-index:1;padding:10px 14px;box-sizing:border-box}
+.layer.indigo{border-left-color:var(--indigo)}.layer h3{margin:0;font-size:14px}.layer p{margin:3px 0 0;font-size:11px;color:var(--sub)}
+.card{position:absolute;display:flex;gap:10px;align-items:flex-start;background:#fff;border:1.5px solid var(--line);border-radius:6px;box-shadow:0 2px 6px rgba(16,24,40,.12);padding:12px 12px 10px;box-sizing:border-box;z-index:3;height:92px;overflow:hidden}
+.card b{display:block;font-size:12.5px;line-height:1.25}.card small{display:block;font-size:10.5px;color:var(--sub);margin-top:3px;line-height:1.3}
+.ico{flex:0 0 28px;height:28px;border-radius:7px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:11px}
+.st-ok{border-color:var(--ok)}.st-ok .ico{background:var(--ok)}
+.st-part{border-color:var(--part)}.st-part .ico{background:var(--part)}
+.st-gap{border-color:var(--gap);border-style:dashed;background:#FFF6F5}.st-gap .ico{background:var(--gap)}
+.st-own{border-color:#4B5563;background:#F3F4F6}.st-own .ico{background:#4B5563}
+.st-exp{border-color:var(--exp);background:#FAF5FC}.st-exp .ico{background:var(--exp)}
+.badge{position:absolute;bottom:-1px;right:8px;transform:translateY(50%);color:#fff;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:999px;z-index:4;letter-spacing:.2px}
+.card{overflow:visible}
+section.order{margin-top:22px}section.order h2{font-size:16px;margin:0 0 10px}
+ol{margin:0;padding-left:22px;max-width:980px;font-size:13px;line-height:1.55}ol li{margin-bottom:6px}ol b{font-weight:700}
+.note{margin-top:14px;font-size:12px;color:var(--sub);max-width:980px;line-height:1.5}
+</style>
+<h1>Governed MCP Build Map</h1>
+<p class="lead">What exists today across the release plane, the Codex-facing marketplaces, and the three runtime platforms, with what is verified, what is partial, and what is still to build. Everything runs against synthetic data.</p>
+<div class="legend">
+<span><i class="sw" style="border-color:var(--ok);background:#EAF7EF"></i>Verified: tested live</span>
+<span><i class="sw" style="border-color:var(--part);background:#FDF4E1"></i>Partial: built, with a known fault or missing piece</span>
+<span><i class="sw" style="border-color:var(--gap);border-style:dashed;background:#FFF6F5"></i>Gap: not built</span>
+<span><i class="sw" style="border-color:var(--exp);background:#FAF5FC"></i>Exposed: exists, outside governance</span>
+<span><i class="sw" style="border-color:#4B5563;background:#F3F4F6"></i>Arm-owned: exists at Arm, outside our build</span>
+<span><i class="ln"></i>Flow that works</span><span><i class="ln g"></i>Flow still missing</span>
+</div>
+<div class="scroll"><div class="canvas" id="canvas">
+<div class="boundary" style="left:10px;top:30px;width:470px;height:770px"><span class="pill">Release plane · GitHub</span></div>
+<div class="boundary" style="left:500px;top:30px;width:330px;height:770px"><span class="pill">Discovery and distribution</span></div>
+<div class="boundary" style="left:10px;top:820px;width:820px;height:330px"><span class="pill">Cross-cutting controls</span></div>
+<div class="boundary" style="left:870px;top:30px;width:900px;height:225px"><span class="pill">Laptop · Codex local</span></div>
+<div class="boundary" style="left:870px;top:275px;width:900px;height:555px"><span class="pill">AWS sandbox · us-east-1</span></div>
+<div class="boundary" style="left:870px;top:850px;width:900px;height:390px"><span class="pill">Azure lab subscription · westus2</span></div>
+<div class="boundary" style="left:870px;top:1260px;width:900px;height:235px"><span class="pill">MuleSoft Anypoint · Arm sandbox (to request)</span></div>
+<div class="layer" id="Lr1" style="left:30px;top:85px;width:430px;height:150px"><h3>Source</h3><p>Capabilities and code in Git</p></div>
+<div class="layer" id="Lr2" style="left:30px;top:255px;width:430px;height:150px"><h3>Checks and approval</h3><p>Before anything is published</p></div>
+<div class="layer" id="Lr3" style="left:30px;top:425px;width:430px;height:150px"><h3>Release</h3><p>Signed, immutable records</p></div>
+<div class="layer" id="Lr4" style="left:30px;top:595px;width:430px;height:150px"><h3>Publish</h3><p>Deploy and catalogue</p></div>
+<div class="layer indigo" id="Lm1" style="left:515px;top:85px;width:300px;height:360px"><h3>Marketplaces</h3><p>Where Codex finds plugins</p></div>
+<div class="layer indigo" id="Lm2" style="left:515px;top:465px;width:300px;height:150px"><h3>Discovery</h3><p>Feed for OASIS</p></div>
+<div class="layer indigo" id="Lm3" style="left:515px;top:635px;width:300px;height:150px"><h3>Access policy</h3><p>Who may see and use what</p></div>
+<div class="layer" id="Lx" style="left:30px;top:875px;width:780px;height:256px"><h3>Observability, audit and cost</h3><p>Same record on every platform</p></div>
+<div class="layer indigo" id="Ll1" style="left:885px;top:85px;width:870px;height:150px"><h3>Local MCP</h3><p>stdio process started by Codex</p></div>
+<div class="layer" id="La1" style="left:885px;top:330px;width:870px;height:150px"><h3>Gateway (native)</h3><p>API Gateway, HTTP API</p></div>
+<div class="layer" id="La2" style="left:885px;top:495px;width:870px;height:150px"><h3>Capability runtime</h3><p>Lambda, arm64</p></div>
+<div class="layer" id="La3" style="left:885px;top:660px;width:870px;height:150px"><h3>Backend and data</h3><p>Audit, network, data source</p></div>
+<div class="layer" id="Lz1" style="left:885px;top:905px;width:870px;height:150px"><h3>Gateway</h3><p>In front of the agent</p></div>
+<div class="layer" id="Lz2" style="left:885px;top:1070px;width:870px;height:150px"><h3>Agent and data</h3><p>Where the work runs</p></div>
+<div class="layer" id="Lq1" style="left:885px;top:1315px;width:870px;height:150px"><h3>Gateway and registry</h3><p>Arm&#x27;s MuleSoft Agent Fabric</p></div>
+<div class="card st-ok" id="c_cap" style="left:45px;top:129px;width:190px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">C</span><div><b>capabilities/&lt;name&gt;/</b><small>manifest, SKILL.md, eval cases. 2 capabilities</small></div></div>
+<div class="card st-ok" id="c_src" style="left:250px;top:129px;width:190px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">S</span><div><b>src/ packages</b><small>MCP code for stdio and remote</small></div></div>
+<div class="card st-ok" id="c_pr" style="left:45px;top:299px;width:190px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">PR</span><div><b>PR checks (dry run)</b><small>Common baseline, platform checks, evals. Ran green</small></div></div>
+<div class="card st-part" id="c_rev" style="left:250px;top:299px;width:190px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">R</span><div><b>Review gate</b><small>main needs a PR and a passing check. Approvals set to 0, no review team</small></div></div>
+<div class="card st-ok" id="c_rel" style="left:45px;top:469px;width:190px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Rl</span><div><b>Release job (merge)</b><small>Signs with a real secret key, verifies every release before publishing</small></div></div>
+<div class="card st-part" id="c_reg" style="left:250px;top:469px;width:190px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">Rg</span><div><b>Registry</b><small>Git branch, 3 releases, shared-secret signing. KMS or Sigstore later</small></div></div>
+<div class="card st-ok" id="c_dep" style="left:45px;top:639px;width:190px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">D</span><div><b>Deploy job</b><small>Deploys to AWS from CI via OIDC. Code hash proven. Entra check not yet in CI</small></div></div>
+<div class="card st-part" id="c_cat" style="left:250px;top:639px;width:190px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">Ct</span><div><b>Catalogue build</b><small>Feed + OpenAI marketplace on a catalogue branch. Local one is laptop-only</small></div></div>
+<div class="card st-ok" id="c_lm" style="left:530px;top:129px;width:270px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">L</span><div><b>Local marketplace</b><small>marketplace.json. Plugins appear and install in Codex</small></div></div>
+<div class="card st-part" id="c_om" style="left:530px;top:235px;width:270px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">O</span><div><b>OpenAI workspace marketplace</b><small>Published to the catalogue branch. Never imported by an admin</small></div></div>
+<div class="card st-gap" id="c_app" style="left:530px;top:341px;width:270px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">A</span><div><b>.app.json plugin kind</b><small>Needs an admin-registered OpenAI app id</small></div></div>
+<div class="card st-part" id="c_oasis" style="left:530px;top:509px;width:270px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">Oa</span><div><b>OASIS feed.json</b><small>Provisional format. Real contract unconfirmed</small></div></div>
+<div class="card st-gap" id="c_rbac" style="left:530px;top:679px;width:270px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Rb</span><div><b>Plugin RBAC groups</b><small>Entra groups per capability. tools/list per user</small></div></div>
+<div class="card st-gap" id="c_ev" style="left:45px;top:919px;width:240px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">E</span><div><b>Common audit event</b><small>Same fields on AWS, Azure and local (K-036)</small></div></div>
+<div class="card st-gap" id="c_geo" style="left:305px;top:919px;width:240px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Ge</span><div><b>Geordie consumer</b><small>Reads platform telemetry, flags unapproved tools (R6)</small></div></div>
+<div class="card st-part" id="c_susp" style="left:565px;top:919px;width:240px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">Su</span><div><b>Suspension control</b><small>S3 list (AWS) and Blob list (Azure) work. Local has none. No one CLI for both</small></div></div>
+<div class="card st-part" id="c_cost" style="left:45px;top:1025px;width:240px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">$</span><div><b>Cost guard</b><small>AWS $25 budget, no alert email. Nothing on Azure yet</small></div></div>
+<div class="card st-ok" id="c_cw" style="left:305px;top:1025px;width:240px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Cw</span><div><b>Audit sinks</b><small>CloudWatch (AWS) and Container Apps logs (Azure): user, capability, version</small></div></div>
+<div class="card st-part" id="c_cache" style="left:565px;top:1025px;width:240px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">T</span><div><b>Trust lifetimes</b><small>5 s on AWS and Azure. Local and others undefined (K-024)</small></div></div>
+<div class="card st-gap" id="c_lid" style="left:905px;top:129px;width:260px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Id</span><div><b>Local identity</b><small>Uses the OS username. No Entra, no SPIFFE</small></div></div>
+<div class="card st-gap" id="c_lrev" style="left:1195px;top:129px;width:260px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Rv</span><div><b>Local revocation</b><small>Cannot stop a package already on a laptop</small></div></div>
+<div class="card st-ok" id="c_lmcp" style="left:1485px;top:129px;width:260px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">M</span><div><b>incident-lookup (stdio)</b><small>Verified in Codex. Codex plugin cache holds the copy</small></div></div>
+<div class="card st-ok" id="c_thr" style="left:905px;top:374px;width:400px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Th</span><div><b>Throttling and limits</b><small>10 requests/s, burst 20, set at the gateway</small></div></div>
+<div class="card st-ok" id="c_gw" style="left:1325px;top:374px;width:400px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Gw</span><div><b>API Gateway + Entra JWT check</b><small>Issuer, audience and scope checked before the function runs</small></div></div>
+<div class="card st-ok" id="c_sus" style="left:905px;top:539px;width:400px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Sp</span><div><b>Suspension list</b><small>S3 object, 5 s cache, fails closed</small></div></div>
+<div class="card st-ok" id="c_lam" style="left:1325px;top:539px;width:400px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">La</span><div><b>project-status remote MCP</b><small>Lambda from the approved wheel. Does not call the agent yet</small></div></div>
+<div class="card st-ok" id="c_aud" style="left:905px;top:704px;width:190px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Au</span><div><b>Audit</b><small>CloudWatch: user, capability, version</small></div></div>
+<div class="card st-gap" id="c_net" style="left:1115px;top:704px;width:190px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Nw</span><div><b>Private network path</b><small>Public internet today</small></div></div>
+<div class="card st-gap" id="c_be" style="left:1325px;top:704px;width:400px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Be</span><div><b>Backend service</b><small>In-process synthetic data. No separate service, no workload identity</small></div></div>
+<div class="card st-gap" id="c_areg" style="left:905px;top:949px;width:400px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Rg</span><div><b>Registered capability</b><small>Pipeline support for kind=agent: image digest pinned, tools from live tools/list. Not built</small></div></div>
+<div class="card st-ok" id="c_agw" style="left:1325px;top:949px;width:400px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">Gw</span><div><b>Agent gateway (Container App)</b><small>Entra check, allowed callers, suspension (Blob), audit. OBO call to the agent proven live</small></div></div>
+<div class="card st-exp" id="c_agent" style="left:905px;top:1114px;width:260px"><span class="badge" style="background:#8E44AD">Exposed</span><span class="ico">Ag</span><div><b>tag-compliance-elna</b><small>Container App, tool tag.inspect. Tool calls need its API key; no Entra, discovery is open. Unchanged</small></div></div>
+<div class="card st-gap" id="c_dbx" style="left:1195px;top:1114px;width:260px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Db</span><div><b>Databricks governed path</b><small>Read as the signed-in user, with audit</small></div></div>
+<div class="card st-gap" id="c_aing" style="left:1485px;top:1114px;width:260px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Lk</span><div><b>Agent ingress lockdown</b><small>Agent still reachable directly. Close it so only the gateway can call it</small></div></div>
+<div class="card st-gap" id="c_mreg" style="left:905px;top:1359px;width:260px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Rg</span><div><b>Agent Registry (Exchange)</b><small>Register the approved release. Needs Anypoint sandbox access</small></div></div>
+<div class="card st-gap" id="c_mgw" style="left:1195px;top:1359px;width:260px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Og</span><div><b>Omni Gateway policies</b><small>Entra JWT check, MCP access rules, OBO policy. Managed or Connected mode only</small></div></div>
+<div class="card st-own" id="c_mfab" style="left:1485px;top:1359px;width:260px"><span class="badge" style="background:#4B5563">Arm-owned</span><span class="ico">Af</span><div><b>Arm-i on Agent Fabric</b><small>Arm runs this today for business processes. Orchestrates; not ours to build</small></div></div>
+<div class="card st-part" id="c_codex" style="left:1800px;top:129px;width:280px"><span class="badge" style="background:#B7791F">Partial</span><span class="ico">Cx</span><div><b>Codex (Arm user)</b><small>Local install and local tool call verified. Remote call and OAuth sign-in not tried</small></div></div>
+<div class="card st-ok" id="c_entra" style="left:1800px;top:374px;width:280px"><span class="badge" style="background:#1F7A4D">Verified</span><span class="ico">En</span><div><b>Microsoft Entra ID</b><small>3 app registrations (MCP, Codex client, agent). Real tokens and OBO verified</small></div></div>
+<div class="card st-gap" id="c_spiffe" style="left:1800px;top:704px;width:200px"><span class="badge" style="background:#C0392B">Gap</span><span class="ico">Sf</span><div><b>SPIFFE / SPIRE</b><small>Workload identity for backend and agent. Nothing built</small></div></div>
+<svg class="wires" id="wires"></svg></div></div>
+<section class="order"><h2>What to build, in order</h2><ol>
+<li><b>Done today: signing, review gate, CI deploy.</b> Releases are signed with a real key and verified, <code>main</code> needs a PR and a passing check, and a merge deploys to AWS from CI. Still open from this step: a CI identity so the pipeline can also run the real Entra check, and a review team.</li>
+<li><b>Azure agent: gateway built and verified.</b> Entra token check, allowed-callers list, suspension and audit sit in front of the agent, and a real on-behalf-of call reaches it. Still open: register it through the pipeline as an agent capability, call it from the AWS MCP, and close the agent's own public ingress.</li>
+<li><b>Add SPIFFE.</b> Stand up a sandbox trust domain, split the backend from the function, and make the gateway-to-backend call use a workload identity. AWS first, then the agent.</li>
+<li><b>MuleSoft platform.</b> Register a capability in Agent Fabric and publish it through Omni Gateway with the Entra check. Needs an Anypoint sandbox and an answer on self-hosting; see docs/mulesoft.md.</li>
+<li><b>Give local MCP real identity.</b> Sign the user in with Entra and add a way to withdraw a package already installed on a laptop.</li>
+<li><b>Plugin access by group.</b> Entra groups decide who sees and uses each capability; tools/list follows the user.</li>
+<li><b>Databricks.</b> A governed read path that passes the signed-in user through and is audited.</li>
+<li><b>One audit record and Geordie.</b> A common event format on every platform, one suspension control for all of them, and Geordie reading the telemetry.</li></ol>
+<p class="note">Not shown, because nothing is built: KPaaS gateway, A2A, multi-region. Codex-to-OpenAI details that depend on decision D8 (how plugins reach OpenAI) are unconfirmed.</p></section>
+<script>
+const links=[["Lr1", "Lr2", "bottom", "top", 0, {}], ["Lr2", "Lr3", "bottom", "top", 0, {}], ["Lr3", "Lr4", "bottom", "top", 0, {}], ["Lr4", "Lm1", "right", "left", 0, {}], ["c_codex", "c_lmcp", "left", "right", 0, {}], ["c_entra", "c_gw", "left", "right", 0, {}], ["c_gw", "c_lam", "bottom", "top", 0, {}], ["c_sus", "c_lam", "right", "left", 0, {}], ["c_lam", "c_be", "bottom", "top", 1, {}], ["c_spiffe", "c_be", "left", "right", 1, {}], ["c_areg", "c_agw", "right", "left", 1, {}], ["c_agw", "c_agent", "bottom", "top", 0, {"my": 1090, "dxB": 0}], ["c_entra", "c_agw", "bottom", "right", 0, {"dxA": 100}]];
+function pt(el,side,dx){const c=document.getElementById('canvas').getBoundingClientRect(),r=el.getBoundingClientRect();const x=r.left-c.left,y=r.top-c.top;dx=dx||0;
+ return side==='left'?[x,y+r.height/2]:side==='right'?[x+r.width,y+r.height/2]:side==='top'?[x+r.width/2+dx,y]:[x+r.width/2+dx,y+r.height];}
+function draw(){const svg=document.getElementById('wires');
+ svg.innerHTML='<defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#374151"/></marker><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#C0392B"/></marker></defs>';
+ for(const [a,b,sa,sb,gap,o] of links){const A=pt(document.getElementById(a),sa,o.dxA),B=pt(document.getElementById(b),sb,o.dxB);const ha=(sa==='left'||sa==='right'),hb=(sb==='left'||sb==='right');let d;
+  if(ha&&hb){const mx=o.mx??(A[0]+B[0])/2;d=`M${A[0]} ${A[1]}H${mx}V${B[1]}H${B[0]}`;}
+  else if(!ha&&!hb){const my=o.my??(A[1]+B[1])/2;d=`M${A[0]} ${A[1]}V${my}H${B[0]}V${B[1]}`;}
+  else if(ha){d=`M${A[0]} ${A[1]}H${B[0]}V${B[1]}`;}else{d=`M${A[0]} ${A[1]}V${B[1]}H${B[0]}`;}
+  const col=gap?'#C0392B':'#374151';
+  svg.insertAdjacentHTML('beforeend',`<path d="${d}" fill="none" stroke="${col}" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#${gap?'a2':'a1'})"/>`);}}
+window.addEventListener('load',draw);window.addEventListener('resize',draw);
+</script></body></html>
