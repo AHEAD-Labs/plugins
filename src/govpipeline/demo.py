@@ -38,18 +38,21 @@ def run_demo(ws_dir: str) -> int:
 
 def _run(ws: Workspace) -> int:
     step("1. Approval pipeline: two versions of one capability")
-    v2dir = os.path.join(ws.work, "project-status-0.2.0")   # a later commit of the same capability folder
-    shutil.copytree(os.path.dirname(MANIFEST), v2dir)
-    m2 = os.path.join(v2dir, "manifest.yaml")
-    y = yaml.safe_load(open(m2)); y["version"] = "0.2.0"
-    yaml.safe_dump(y, open(m2, "w"))
-    for path in (MANIFEST, m2):
+    def versioned(ver):  # the demo releases its own copies, so it does not depend on the real version number
+        d = os.path.join(ws.work, f"project-status-{ver}")
+        shutil.copytree(os.path.dirname(MANIFEST), d)
+        mp = os.path.join(d, "manifest.yaml")
+        y = yaml.safe_load(open(mp)); y["version"] = ver
+        yaml.safe_dump(y, open(mp, "w"))
+        return mp
+    m1, m2 = versioned("0.1.0"), versioned("0.2.0")
+    for path in (m1, m2):
         rec = release(path, ws, run_tests=True)
         n = len(rec["approval"]["checks"])
         check(rec["status"] == "approved", f"{rec['version']} approved ({n} checks, "
               f"sha256 {rec['artifact']['sha256'][:12]}…, schema {rec['schema_digest'][:12]}…)")
     try:
-        release(MANIFEST, ws, run_tests=False); check(False, "re-release of 0.1.0 must be rejected")
+        release(m1, ws, run_tests=False); check(False, "re-release of 0.1.0 must be rejected")
     except ReleaseRejected:
         check(True, "re-releasing 0.1.0 is rejected (immutable releases)")
 
