@@ -4,7 +4,6 @@
 name: capability-release
 on:
   pull_request:
-    paths: ["capabilities/**", "src/**", "pyproject.toml"]
   push:
     branches: [main]
     paths: ["capabilities/**", "src/**", "pyproject.toml", ".github/workflows/**"]
@@ -56,6 +55,10 @@ jobs:
           else
             mkdir -p .gmo/registry && git -C .gmo/registry init -b registry
           fi
+      - name: Require a real signing key
+        env:
+          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
+        run: test "${#GMO_SIGNING_KEY}" -ge 32 || { echo "::error::GMO_SIGNING_KEY secret missing or too short"; exit 1; }
       - id: rel
         run: |
           uv run gmo --ws .gmo release --only-new | tee out.txt
@@ -63,6 +66,10 @@ jobs:
         env:
           GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}   # only this job can sign
           GMO_PR: ${{ github.sha }}
+      - name: Verify every release in the registry (signature + artifact digest)
+        env:
+          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
+        run: uv run gmo --ws .gmo verify
       - name: Push new releases (append only)
         if: steps.rel.outputs.released != '0'
         working-directory: .gmo/registry
@@ -92,6 +99,12 @@ jobs:
           fi
       - name: Deploy (simulated platform in this MVP; MuleSoft/AWS/KPaaS steps go here)
         run: echo "uv run gmo --ws .gmo deploy <version> --cap <id>   # per platform"
+      - name: Verify registry before building the catalogue
+        env:
+          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
+        run: uv run gmo --ws .gmo verify
       - run: uv run gmo --ws .gmo catalogue
+        env:
+          GMO_SIGNING_KEY: ${{ secrets.GMO_SIGNING_KEY }}
       - uses: actions/upload-artifact@v4
         with: { name: catalogue, path: .gmo/catalogue }

@@ -26,6 +26,7 @@ def main(argv=None):
     i.add_argument("version"); i.add_argument("--cap", default="ahead.project-status")
     rb = sp.add_parser("rollback", help="redeploy the previous approved release"); rb.add_argument("--cap", default="ahead.project-status")
     sp.add_parser("backend", help="start the synthetic backend API")
+    sp.add_parser("verify", help="check signature + artifact digest of every release in the registry")
     sp.add_parser("stop", help="stop platform processes")
     sp.add_parser("catalogue", help="regenerate discovery feed + Codex plugin bundle")
     s = sp.add_parser("suspend"); s.add_argument("--cap", default="ahead.project-status")
@@ -54,6 +55,18 @@ def main(argv=None):
             except ReleaseRejected as e:
                 print(e, file=sys.stderr); return 1
             print(("checks passed (dry run)" if a.dry_run else "approved")+f" {rec['capability_id']}@{rec['version']} sha256={rec['artifact']['sha256'][:16]}…")
+    elif a.cmd == "verify":
+        from .registry import Registry
+        reg, bad, n = Registry(ws.registry), 0, 0
+        for cap in reg.capabilities():
+            for ver in reg.versions(cap):
+                n += 1
+                try:
+                    reg.load(cap, ver); print(f"ok    {cap}@{ver}")
+                except Exception as e:
+                    bad += 1; print(f"FAIL  {cap}@{ver}: {e}", file=sys.stderr)
+        print(f"{n - bad}/{n} releases verified")
+        return 1 if bad or n == 0 else 0
     elif a.cmd == "deploy":
         print(json.dumps(deployer.deploy_remote(ws, a.cap, a.version), indent=2))
     elif a.cmd == "install-local":
