@@ -17,8 +17,24 @@ def _s3():
     return boto3.client("s3")
 
 
+def _blob():
+    from azure.identity import DefaultAzureCredential  # only needed for azblob:// storage
+    from azure.storage.blob import BlobClient
+    acct, container, name = _path()[9:].split("/", 2)
+    return BlobClient(f"https://{acct}.blob.core.windows.net", container, name, credential=DefaultAzureCredential())
+
+
 def _load() -> list[dict]:
     path, ttl = _path(), float(os.environ.get("GMO_REVOCATION_TTL", "0"))
+    if path.startswith("azblob://"):
+        if ttl and time.time() - _cache["at"] < ttl:
+            return _cache["entries"]
+        try:
+            entries = json.loads(_blob().download_blob().readall())
+        except Exception:  # fail closed, same as S3
+            raise RuntimeError("revocation list unavailable")
+        _cache.update(at=time.time(), entries=entries)
+        return entries
     if path.startswith("s3://"):
         if ttl and time.time() - _cache["at"] < ttl:
             return _cache["entries"]
@@ -37,6 +53,10 @@ def _load() -> list[dict]:
 
 
 def _save(entries: list[dict]) -> None:
+    if _path().startswith("azblob://"):
+        _blob().upload_blob(json.dumps(entries, indent=2).encode(), overwrite=True)
+        _cache["at"] = 0.0
+        return
     if _path().startswith("s3://"):
         bucket, key = _path()[5:].split("/", 1)
         _s3().put_object(Bucket=bucket, Key=key, Body=json.dumps(entries, indent=2).encode(),
