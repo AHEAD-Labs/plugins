@@ -78,7 +78,7 @@ def ensure_roles(s, acct):
     _role(iam, DEPLOY_ROLE, {"Version": "2012-10-17", "Statement": [{"Effect": "Allow",
           "Principal": {"Federated": arn}, "Action": "sts:AssumeRoleWithWebIdentity",
           "Condition": {"StringEquals": {f"{GH_OIDC}:aud": "sts.amazonaws.com",
-                                         f"{GH_OIDC}:sub": f"repo:{REPO}:environment:production"}}}]},
+                                         f"{GH_OIDC}:sub": f"{SUB_PREFIX}:environment:production"}}}]},
           "GitHub Actions deploy for gmo-* only")
     fn = f"arn:aws:lambda:{REGION}:{acct}:function:gmo-*"
     iam.put_role_policy(RoleName=DEPLOY_ROLE, PolicyName="gmo-deploy", PolicyDocument=json.dumps({
@@ -90,7 +90,8 @@ def ensure_roles(s, acct):
                       f"arn:aws:apigateway:{REGION}::/tags/*"]},
         {"Effect": "Allow", "Action": "iam:PassRole", "Resource": f"arn:aws:iam::{acct}:role/{LAMBDA_ROLE}",
          "Condition": {"StringEquals": {"iam:PassedToService": "lambda.amazonaws.com"}}},
-        {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject"], "Resource": f"arn:aws:s3:::{bucket(acct)}/*"},
+        {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:PutObjectTagging"], "Resource": f"arn:aws:s3:::{bucket(acct)}/*"},
+        {"Effect": "Allow", "Action": "ssm:GetParameter", "Resource": f"arn:aws:ssm:{REGION}:{acct}:parameter/gmo/*"},
         {"Effect": "Allow", "Action": ["logs:CreateLogGroup", "logs:DescribeLogGroups", "logs:PutRetentionPolicy",
                                        "logs:TagResource"], "Resource": f"arn:aws:logs:{REGION}:{acct}:log-group:/aws/lambda/gmo-*"}]}))
 
