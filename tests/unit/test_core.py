@@ -104,3 +104,52 @@ def test_agent_release_is_signed_and_pinned_by_digest(tmp_path, monkeypatch):
     p = tmp_path / "ahead.a" / "1.0.0" / "release.json"
     r = json.load(open(p)); r["artifact"]["image"] = "r.io/a@sha256:" + "b" * 64; json.dump(r, open(p, "w"))
     with pytest.raises(ValueError, match="signature"): reg.load("ahead.a", "1.0.0")
+
+
+def _agent_env(monkeypatch):
+    for k, v in {"GMO_AGENT_ENDPOINT": "https://agent.example/mcp", "GMO_AGENT_SCOPE": "api://agent/tag-compliance:read",
+                 "GMO_ENTRA_TENANT": "t", "GMO_OBO_CLIENT_ID": "mcp-app", "GMO_OBO_SECRET": "s"}.items():
+        monkeypatch.setenv(k, v)
+
+
+def test_agent_call_swaps_the_user_token_and_never_forwards_it(monkeypatch):
+    import asyncio, httpx
+    from platform_gateway import agent_client, obo
+    _agent_env(monkeypatch)
+    seen = {}
+    monkeypatch.setattr(obo, "exchange", lambda tok, **kw: seen.update(user=tok, scope=kw["scope"]) or "AGENT-TOKEN")
+
+    def handler(req: httpx.Request):
+        seen["auth"] = req.headers["authorization"]
+        body = {"jsonrpc": "2.0", "id": 1, "result": {"content": [{"type": "text", "text": "Which subscription?"}]}}
+        return httpx.Response(200, text="event: message\ndata: " + json.dumps(body) + "\n\n")
+    out = asyncio.run(agent_client.call_tool("USER-TOKEN", "tag.inspect", {"request": "hi"}, transport=httpx.MockTransport(handler)))
+    assert out == "Which subscription?"
+    assert seen["user"] == "USER-TOKEN" and seen["auth"] == "Bearer AGENT-TOKEN" and seen["scope"].startswith("api://agent/")
+
+
+def test_agent_gateway_refusal_is_reported_as_permission_error(monkeypatch):
+    import asyncio, httpx
+    from platform_gateway import agent_client, obo
+    _agent_env(monkeypatch)
+    monkeypatch.setattr(obo, "exchange", lambda *a, **k: "AGENT-TOKEN")
+    t = httpx.MockTransport(lambda r: httpx.Response(403, json={"error": "suspended: incident"}))
+    with pytest.raises(PermissionError, match="suspended"):
+        asyncio.run(agent_client.call_tool("u", "tag.inspect", {}, transport=t))
+
+
+def test_tag_tool_needs_a_signed_in_session_and_audits_the_agent(monkeypatch, tmp_path):
+    import asyncio
+    from mcp.server.fastmcp.exceptions import ToolError
+    from project_status.backend import InProcessBackend
+    from project_status.server import build_server
+    monkeypatch.setenv("GMO_AUDIT_LOG", str(tmp_path / "a.jsonl"))
+    call = lambda srv, **a: asyncio.run(srv.call_tool("check_tag_compliance", a))
+    with pytest.raises(ToolError, match="signed-in remote"):  # stdio / no agent wired
+        call(build_server(InProcessBackend(), lambda: "alice", transport="stdio"), request="x")
+
+    async def agent(req, ans): return "3 resources lack an owner tag"
+    out = call(build_server(InProcessBackend(), lambda: "alice", transport="streamable-http", agent=agent), request="x")
+    assert "3 resources" in json.dumps(out, default=str)
+    recs = [json.loads(l) for l in open(tmp_path / "a.jsonl")]
+    assert [r["decision"] for r in recs] == ["deny", "allow"] and "ahead.tag-compliance" in recs[1]["reason"]

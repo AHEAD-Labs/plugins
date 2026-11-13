@@ -17,7 +17,7 @@ deployments:
     endpoint: https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp
     image: ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d
     gateway_image: ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:13c925bbec7fd0913616cc7c203a33962d6eeaa971962891580b6f066a15209b
-    ingress: public          # becomes gateway-only once the agent's own endpoint is closed
+    ingress: gateway-only    # the agent's own address is internal to the environment
     auth:
       type: oauth2-bearer
       issuer: https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0
