@@ -1,0 +1,33 @@
+{
+  "artifact_sha256": "e05d8aa605bdee847be806e27ab2eefd5ec94e774104b51e72387e183d1e9d14",
+  "cases": [
+    {
+      "id": "alice-lists-all",
+      "passed": true
+    },
+    {
+      "id": "bob-lists-own",
+      "passed": true
+    },
+    {
+      "id": "mallory-lists-none",
+      "passed": true
+    },
+    {
+      "id": "alice-status",
+      "passed": true
+    },
+    {
+      "id": "bob-denied-other-project",
+      "passed": true
+    },
+    {
+      "id": "unknown-project-same-error",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "ran_at": "2026-11-13T02:27:24Z",
+  "suite": "golden/v1",
+  "transport": "stdio"
+}

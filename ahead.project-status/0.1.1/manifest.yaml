@@ -1,0 +1,32 @@
+# Release manifest (authored, lives in Git). The pipeline adds digests, evidence and
+# approval record to produce the immutable release record in the registry.
+capability_id: ahead.project-status
+python_package: project_status
+name: Project Status
+description: Read-only project listing and status lookup (synthetic data).
+owner:
+  team: eTech Platform (placeholder)
+  contact: owner@example.invalid
+version: 0.1.1
+audience: [engineering-all]        # who may discover/use it
+classification: internal           # public | internal | confidential | restricted
+tools: [list_projects, get_project_status]
+deployments:
+  - id: local
+    transport: stdio
+    package:
+      type: python-wheel
+      entrypoint: project_status.stdio_main
+    auth:
+      type: os-user                # identity = OS user running the process
+  - id: remote
+    transport: streamable-http
+    endpoint: http://127.0.0.1:8802/mcp
+    auth:
+      type: oauth2-bearer
+      issuer: http://127.0.0.1:8802/idp   # demo IdP; Entra/Okta in a real platform
+      audience: http://127.0.0.1:8802/mcp
+      scopes: [project-status:read]
+distribution:
+  - oasis
+  - openai-codex-plugin
