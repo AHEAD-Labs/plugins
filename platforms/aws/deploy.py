@@ -14,6 +14,8 @@ from common import *  # noqa
 import package
 
 SSM_SECRET = "/gmo/idp-secret"
+SSM_OBO = "/gmo/obo-client-secret"
+AGENT = "ahead.tag-compliance"
 
 
 def idp_secret(s) -> str:
@@ -35,6 +37,18 @@ def wait_ready(lam, name):
     raise TimeoutError("lambda not ready")
 
 
+def agent_env(registry_dir, entra) -> dict:
+    """The MCP may call an agent only if the agent has a signed release: its endpoint and scope come from that record."""
+    from govpipeline.registry import Registry
+    reg = Registry(registry_dir)
+    vers = reg.versions(AGENT) if entra else []
+    if not vers:
+        return {}
+    d = reg.load(AGENT, vers[-1])["deployments"][0]
+    return {"GMO_AGENT_ENDPOINT": d["endpoint"], "GMO_AGENT_SCOPE": f"{d['auth']['audience']}/{d['auth']['scopes'][0]}",
+            "GMO_OBO_CLIENT_ID": entra["api_client_id"], "GMO_OBO_SECRET_SSM": SSM_OBO}
+
+
 def deploy(s, registry_dir, cap, ver, workdir, entra=None):
     acct = account(s); lam, apigw, s3 = s.client("lambda"), s.client("apigatewayv2"), s.client("s3")
     zpath, sha, rec = package.build(registry_dir, cap, ver, workdir)
@@ -46,6 +60,7 @@ def deploy(s, registry_dir, cap, ver, workdir, entra=None):
            "GMO_REMOTE_ENDPOINT": "https://pending.invalid/mcp"}
     if entra:  # real identity: the function validates Entra tokens too (defence in depth)
         env.update(GMO_ENTRA_TENANT=entra["tenant_id"], GMO_ENTRA_AUDIENCE=entra["api_client_id"])
+    env.update(agent_env(registry_dir, entra))
     code = {"S3Bucket": bucket(acct), "S3Key": key}
     try:
         old = lam.get_function_configuration(FunctionName=FUNCTION)

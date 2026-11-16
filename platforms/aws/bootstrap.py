@@ -68,6 +68,10 @@ def ensure_roles(s, acct):
     iam.put_role_policy(RoleName=LAMBDA_ROLE, PolicyName="revocations-read", PolicyDocument=json.dumps({
         "Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": "s3:GetObject",
         "Resource": f"arn:aws:s3:::{bucket(acct)}/revocations.json"}]}))
+    # the MCP swaps the user's token for an agent token (OBO): it reads its own client secret, nothing else
+    iam.put_role_policy(RoleName=LAMBDA_ROLE, PolicyName="obo-secret-read", PolicyDocument=json.dumps({
+        "Version": "2012-10-17", "Statement": [{"Effect": "Allow", "Action": "ssm:GetParameter",
+        "Resource": f"arn:aws:ssm:{REGION}:{acct}:parameter/gmo/obo-client-secret"}]}))
     arn = f"arn:aws:iam::{acct}:oidc-provider/{GH_OIDC}"
     try:
         iam.get_open_id_connect_provider(OpenIDConnectProviderArn=arn); print("oidc provider exists")

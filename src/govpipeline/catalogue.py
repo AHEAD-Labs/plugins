@@ -47,7 +47,7 @@ def build_feed(ws: Workspace, remote_only: bool = False) -> dict:
                 install["remote"] = {"transport": "streamable-http", "endpoint": aws.get("endpoint", d["endpoint"]),
                                      "auth": auth, **({"platform": "aws"} if aws else {})}
         entries.append({
-            "capability_id": cap, "name": rec["name"], "description": rec["description"],
+            "capability_id": cap, "kind": rec.get("kind", "mcp"), "name": rec["name"], "description": rec["description"],
             "owner": rec["owner"], "classification": rec["classification"], "audience": rec["audience"],
             "version": rec["version"], "status": _status(cap, rec["version"]),
             "released_versions": [{"version": v, "status": _status(cap, v)} for v in vers],

@@ -17,11 +17,21 @@ def az_token(scope=None, resource=None):
     return sh("az", "account", "get-access-token", "--query", "accessToken", "-o", "tsv", *(["--scope", scope] if scope else ["--resource", resource]))
 
 
+def released_tools():
+    """Tools in the newest signed release of the agent (registry branch checked out under .gmo/registry or GMO_REGISTRY)."""
+    from govpipeline.registry import Registry
+    reg = Registry(os.environ.get("GMO_REGISTRY", ".gmo/registry"))
+    vers = reg.versions("ahead.tag-compliance")
+    return sorted(reg.load("ahead.tag-compliance", vers[-1])["tools"]) if vers else None
+
+
 def main(cfg, endpoint, storage):
     out, post = [], lambda tok=None, body=CALL: httpx.post(endpoint, json=body, timeout=90,
                                                            headers={**H, **({"Authorization": f"Bearer {tok}"} if tok else {})})
     ok = lambda n, p, d="": out.append((n, bool(p), d))
     ok("health", httpx.get(endpoint.replace("/mcp", "/health"), timeout=30).status_code == 200)
+    ok("the agent's own public address no longer answers (gateway is the only way in)",
+       httpx.get(cfg["agent_public_url"], timeout=30).status_code in (404, 403, 502, 503), cfg["agent_public_url"])
     ok("no token -> 401", post().status_code == 401)
     ok("garbage token -> 401", post("not-a-jwt").status_code == 401)
     ok("Entra token for another API (Graph) -> 401", post(az_token(resource="https://graph.microsoft.com")).status_code == 401)
@@ -34,6 +44,10 @@ def main(cfg, endpoint, storage):
     agent_tok = obo.exchange(user_tok, tenant=cfg["tenant_id"], client_id=cfg["mcp_client_id"], client_secret=secret, scope=cfg["agent_scope"])
     r = post(agent_tok)
     ok("OBO token -> agent answers through the gateway", r.status_code == 200 and "Which Azure subscription" in r.text, r.text[:70])
+    tl = httpx.post(endpoint, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, timeout=60,
+                    headers={**H, "Authorization": f"Bearer {agent_tok}"})
+    live_tools = sorted(t["name"] for t in tl.json().get("result", {}).get("tools", [])) if tl.status_code == 200 else []
+    ok("live tools/list equals the tools in the signed release", live_tools == released_tools(), ",".join(live_tools))
     ok("agent API key never reaches the caller", "x-api-key" not in r.text.lower())
     # suspension via the shared Azure Blob list (takes effect within the 5 s cache)
     os.environ["GMO_REVOCATIONS"] = f"azblob://{storage}/state/revocations.json"
@@ -48,5 +62,7 @@ def main(cfg, endpoint, storage):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--cfg", required=True); ap.add_argument("--storage", default="gmoagent6065c874")
+    ap.add_argument("--agent-public-url", default="https://tag-compliance-elna.gentlecoast-92cdab52.westus2.azurecontainerapps.io/")
     ap.add_argument("--endpoint", default="https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp")
-    a = ap.parse_args(); sys.exit(0 if main(json.load(open(a.cfg)), a.endpoint, a.storage) else 1)
+    a = ap.parse_args(); cfg = {**json.load(open(a.cfg)), "agent_public_url": a.agent_public_url}
+    sys.exit(0 if main(cfg, a.endpoint, a.storage) else 1)

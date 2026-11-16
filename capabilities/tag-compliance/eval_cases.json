@@ -1,0 +1,3 @@
+[
+  {"id": "asks-for-scope", "tool": "tag.inspect", "args": {"request": "hello", "answer": ""}, "expect": "asks which subscription"}
+]

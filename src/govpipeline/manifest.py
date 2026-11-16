@@ -16,6 +16,7 @@ class Auth(BaseModel):
     issuer: str | None = None
     audience: str | None = None
     scopes: list[str] = []
+    allowed_callers: list[str] = []   # agents: Entra app ids that may call through the gateway
 
 
 class Package(BaseModel):
@@ -29,6 +30,10 @@ class Deployment(BaseModel):
     package: Package | None = None
     endpoint: str | None = None
     auth: Auth
+    # agents only: what runs behind the gateway, both pinned by digest, and who can reach the agent
+    image: str | None = None
+    gateway_image: str | None = None
+    ingress: Literal["gateway-only", "public"] | None = None
 
     @model_validator(mode="after")
     def _shape(self):
@@ -41,7 +46,8 @@ class Deployment(BaseModel):
 
 class Manifest(BaseModel):
     capability_id: str
-    python_package: str
+    kind: Literal["mcp", "agent"] = "mcp"
+    python_package: str | None = None   # MCP capabilities only: an agent ships as a container image
     name: str
     description: str
     owner: Owner
@@ -51,6 +57,19 @@ class Manifest(BaseModel):
     tools: list[str]
     deployments: list[Deployment]
     distribution: list[Literal["oasis", "openai-codex-plugin"]]
+
+    @model_validator(mode="after")
+    def _kind(self):
+        if self.kind == "mcp" and not self.python_package:
+            raise ValueError("an MCP capability needs python_package")
+        if self.kind == "agent":
+            if self.python_package:
+                raise ValueError("an agent is a container image, not a python package")
+            if len(self.deployments) != 1 or self.deployments[0].transport != "streamable-http":
+                raise ValueError("an agent has exactly one streamable-http deployment (its gateway)")
+            if not self.deployments[0].image:
+                raise ValueError("an agent deployment needs image (pinned by digest)")
+        return self
 
     @field_validator("version")
     @classmethod
