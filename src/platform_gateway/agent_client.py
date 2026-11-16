@@ -9,13 +9,18 @@ the suspension list. Configuration comes from the deployment (the signed agent r
   GMO_ENTRA_TENANT, GMO_OBO_CLIENT_ID    this MCP's own Entra app
   GMO_OBO_SECRET or GMO_OBO_SECRET_SSM   its client secret (an SSM parameter name on AWS, never in the code)
 """
-import asyncio, json, os
+import asyncio, json, os, sys, time
 
 import httpx
 
+from project_status.audit import CORRELATION
 from . import obo
 
 _secret_cache: dict[str, str] = {}
+
+
+def _step(name: str, t0: float) -> None:  # timing only, never values: shows where a slow call spends its time
+    print(json.dumps({"agent_call_step": name, "ms": int((time.time() - t0) * 1000)}), file=sys.stderr, flush=True)
 
 
 def configured() -> bool:
@@ -42,14 +47,20 @@ def _body(resp: httpx.Response) -> dict:
 
 async def call_tool(user_token: str, tool: str, arguments: dict, *, transport: httpx.AsyncBaseTransport | None = None) -> str:
     """Returns the agent's text answer. Raises PermissionError when the agent's gateway refuses (with its reason)."""
+    t0 = time.time()
+    secret = await asyncio.to_thread(_secret)
+    _step("read_obo_secret", t0)
     agent_token = await asyncio.to_thread(
         obo.exchange, user_token, tenant=os.environ["GMO_ENTRA_TENANT"], client_id=os.environ["GMO_OBO_CLIENT_ID"],
-        client_secret=_secret(), scope=os.environ["GMO_AGENT_SCOPE"])
-    async with httpx.AsyncClient(transport=transport, timeout=90) as c:
+        client_secret=secret, scope=os.environ["GMO_AGENT_SCOPE"], timeout=8)
+    _step("obo_exchange", t0)
+    async with httpx.AsyncClient(transport=transport, timeout=18) as c:
         r = await c.post(os.environ["GMO_AGENT_ENDPOINT"], headers={
             "Authorization": f"Bearer {agent_token}", "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream"},
+            "Accept": "application/json, text/event-stream",
+            **({"x-correlation-id": CORRELATION.get()} if CORRELATION.get() else {})},
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+    _step("agent_call", t0)
     if r.status_code in (401, 403):
         reason = r.json().get("error", "refused") if r.headers.get("content-type", "").startswith("application/json") else "refused"
         raise PermissionError(f"agent gateway refused: {reason}")

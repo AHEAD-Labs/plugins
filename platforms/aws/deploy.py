@@ -67,13 +67,13 @@ def deploy(s, registry_dir, cap, ver, workdir, entra=None):
         prev = old.get("Environment", {}).get("Variables", {})
         env["GMO_REMOTE_ENDPOINT"] = prev.get("GMO_REMOTE_ENDPOINT", env["GMO_REMOTE_ENDPOINT"])
         lam.update_function_code(FunctionName=FUNCTION, Architectures=["arm64"], **code); wait_ready(lam, FUNCTION)
-        lam.update_function_configuration(FunctionName=FUNCTION, Environment={"Variables": env}); wait_ready(lam, FUNCTION)
+        lam.update_function_configuration(FunctionName=FUNCTION, Timeout=29, Environment={"Variables": env}); wait_ready(lam, FUNCTION)
     except ClientError as e:
         if e.response["Error"]["Code"] != "ResourceNotFoundException": raise
         for _ in range(10):  # a new IAM role can take a few seconds to become assumable
             try:
                 lam.create_function(FunctionName=FUNCTION, Runtime="python3.12", Role=role, Code=code,
-                    Handler="platform_gateway.aws_handler.handler", Architectures=["arm64"], Timeout=15,
+                    Handler="platform_gateway.aws_handler.handler", Architectures=["arm64"], Timeout=29,
                     MemorySize=512, Environment={"Variables": env}, Tags=PROJECT_TAG); break
             except ClientError as ce:
                 if "cannot be assumed" not in str(ce): raise

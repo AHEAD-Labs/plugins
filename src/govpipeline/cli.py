@@ -28,6 +28,10 @@ def main(argv=None):
     sp.add_parser("backend", help="start the synthetic backend API")
     sp.add_parser("verify", help="check signature + artifact digest of every release in the registry")
     sp.add_parser("stop", help="stop platform processes")
+    cc = sp.add_parser("codex-config", help="generate Codex requirements.toml + managed_config.toml from the registry")
+    cc.add_argument("--otel-endpoint", help="OTLP/HTTP endpoint for Codex telemetry (the Arm telemetry destination)")
+    sp.add_parser("reconcile", help="check registry, deployments and catalogue agree (exit 1 on drift)")
+    sp.add_parser("contract", help="check every platform's control contract (token, audit, suspension, limits, telemetry)")
     cg = sp.add_parser("catalogue", help="regenerate discovery feed + Codex plugin bundle")
     cg.add_argument("--remote-only", action="store_true", help="CI mode: feed + OpenAI-workspace marketplace only")
     s = sp.add_parser("suspend"); s.add_argument("--cap", default="ahead.project-status")
@@ -68,6 +72,23 @@ def main(argv=None):
                     bad += 1; print(f"FAIL  {cap}@{ver}: {e}", file=sys.stderr)
         print(f"{n - bad}/{n} releases verified")
         return 1 if bad or n == 0 else 0
+    elif a.cmd == "reconcile":
+        from . import reconcile
+        res = reconcile.run(ws)
+        print(json.dumps(res, indent=2))
+        return 0 if res["in_agreement"] else 1
+    elif a.cmd == "codex-config":
+        from . import codexconfig
+        out = codexconfig.write(ws, a.otel_endpoint)
+        print(f"wrote {out}/requirements.toml and managed_config.toml")
+    elif a.cmd == "contract":
+        from . import contract
+        rows, errs = contract.check_all()
+        print(f"{'platform':10}" + "".join(f"{c[:13]:15}" for c in contract.CONTROLS))
+        for r in rows:
+            print(f"{r['platform']:10}" + "".join(f"{r[c]:15}" for c in contract.CONTROLS))
+        for e in errs: print("FAIL", e, file=sys.stderr)
+        return 1 if errs or not rows else 0
     elif a.cmd == "deploy":
         print(json.dumps(deployer.deploy_remote(ws, a.cap, a.version), indent=2))
     elif a.cmd == "install-local":

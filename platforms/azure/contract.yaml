@@ -1,0 +1,36 @@
+platform: azure
+platform_owner: eTech Platform (placeholder)
+controls:
+  token_validation:
+    status: enforced
+    enforced_by: gateway Container App checks the Entra token (signature, issuer, audience, expiry) before the agent
+    owner: eTech Platform (placeholder)
+    evidence: platforms/azure/gateway/app.py
+  authorization:
+    status: enforced
+    enforced_by: scope check plus an allowed-callers list (calling Entra app); the agent is reachable only through the gateway
+    owner: eTech Platform (placeholder)
+    evidence: platforms/azure/check.py
+  audit_event:
+    status: enforced
+    enforced_by: one audit line per decision (user, calling app, capability, version, correlation id) to Log Analytics
+    owner: Security (placeholder)
+    evidence: platforms/azure/gateway/app.py
+  suspension:
+    status: enforced
+    enforced_by: Azure Blob suspension list read by the gateway, 5 s cache, fails closed
+    owner: Platform on-call (placeholder)
+    evidence: platforms/azure/check.py
+    max_seconds: 5
+  rate_limit:
+    status: gap
+    owner: eTech Platform (placeholder)
+    note: the gateway sets no request limit; only the replica count (1 to 2) bounds load
+  cost_limit:
+    status: gap
+    owner: eTech Platform (placeholder)
+    note: no Azure budget or cost alert on the resource group
+  telemetry:
+    status: planned
+    owner: Security operations (placeholder)
+    note: Log Analytics holds the audit lines; forwarding to the Arm telemetry destination is not set up

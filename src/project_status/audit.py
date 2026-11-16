@@ -1,6 +1,8 @@
 """Append-only JSONL audit trail. Every record names user, capability and version."""
-import json, os, sys, time, uuid
+import contextvars, json, os, sys, time, uuid
 from . import CAPABILITY_ID, __version__
+
+CORRELATION: contextvars.ContextVar[str | None] = contextvars.ContextVar("gmo_correlation_id", default=None)
 
 
 def record(*, source: str, user: str | None, tool: str | None, transport: str,
@@ -8,7 +10,7 @@ def record(*, source: str, user: str | None, tool: str | None, transport: str,
            version: str | None = None) -> dict:
     rec = {
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "event_id": uuid.uuid4().hex,
+        "event_id": uuid.uuid4().hex, "correlation_id": CORRELATION.get(),
         "source": source, "user": user, "capability_id": CAPABILITY_ID,
         "version": version or os.environ.get("CAPABILITY_VERSION") or __version__,
         "transport": transport, "tool": tool, "project_id": project_id,

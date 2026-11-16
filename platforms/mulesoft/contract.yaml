@@ -1,0 +1,31 @@
+platform: mulesoft
+platform_owner: MuleSoft platform team (to be named)
+controls:
+  token_validation:
+    status: planned
+    owner: MuleSoft platform team (to be named)
+    note: Omni Gateway Entra policy; the OBO policy is not available in Local Mode (see docs/mulesoft.md)
+  authorization:
+    status: planned
+    owner: MuleSoft platform team (to be named)
+    note: waiting for Anypoint sandbox access
+  audit_event:
+    status: planned
+    owner: Security (placeholder)
+    note: waiting for Anypoint sandbox access
+  suspension:
+    status: planned
+    owner: MuleSoft platform team (to be named)
+    note: not yet designed for Agent Fabric
+  rate_limit:
+    status: planned
+    owner: MuleSoft platform team (to be named)
+    note: MuleSoft policies; to confirm
+  cost_limit:
+    status: planned
+    owner: MuleSoft platform team (to be named)
+    note: to confirm
+  telemetry:
+    status: planned
+    owner: Security operations (placeholder)
+    note: to confirm

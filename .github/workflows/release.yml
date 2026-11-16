@@ -32,6 +32,8 @@ jobs:
       - run: uv run gmo --ws .gmo release --dry-run --only-new
         env:
           GMO_PR: "${{ github.repository }}#${{ github.event.number }}"
+      - name: Control contract (every platform declares its controls, owners and gaps)
+        run: uv run gmo contract
 
   # 2. Merge to main: rebuild from the merged commit and write the signed release.
   release:
@@ -123,6 +125,10 @@ jobs:
             --state-out .gmo/deployments/aws-ahead.project-status.json
       - name: Build the remote catalogue (feed + OpenAI-workspace marketplace)
         run: uv run gmo --ws .gmo catalogue --remote-only
+      - name: Codex managed configuration (allowlist of approved remote servers, approval and sandbox floors)
+        run: uv run gmo --ws .gmo codex-config
+      - name: Reconcile registry, deployment and catalogue (fails on drift)
+        run: uv run gmo --ws .gmo reconcile
       - name: Publish the catalogue branch
         run: |
           URL="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"

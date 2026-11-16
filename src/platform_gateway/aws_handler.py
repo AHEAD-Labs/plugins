@@ -5,8 +5,9 @@ starts the ASGI lifespan on every invocation. The server is stateless (stateless
 we build a fresh app per invocation: cheap, and nothing is shared between requests."""
 from mangum import Mangum
 
+from .correlation import Correlation
 from .remote_main import build_remote
 
 
 def handler(event, context):
-    return Mangum(build_remote().streamable_http_app(), lifespan="auto")(event, context)
+    return Mangum(Correlation(build_remote().streamable_http_app()), lifespan="auto")(event, context)
