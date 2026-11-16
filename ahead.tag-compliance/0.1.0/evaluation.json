@@ -1,0 +1,17 @@
+{
+  "artifact_sha256": "ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d",
+  "cases": [
+    {
+      "id": "asks-for-scope",
+      "passed": true
+    },
+    {
+      "id": "covers:tag.inspect",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "ran_at": "2026-11-16T15:30:22Z",
+  "suite": "agent-contract/v1",
+  "transport": "none (checked before deployment)"
+}

@@ -1,0 +1,159 @@
+{
+  "approval": {
+    "approved_at": "2026-11-16T15:30:22Z",
+    "approved_by": "elnamir-ahead",
+    "checks": [
+      {
+        "detail": "schema + semver ok",
+        "name": "manifest-valid",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "ahead.tag-compliance@0.1.0",
+        "name": "version-unreleased",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "engineering-all",
+        "name": "audience-declared",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "11 passed in 0.49s",
+        "name": "unit-tests",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "tag.inspect",
+        "name": "tools-declared",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "2/2 contract cases",
+        "name": "evaluation-passed",
+        "passed": true,
+        "stage": "common"
+      },
+      {
+        "detail": "ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d",
+        "name": "agent-image-pinned-by-digest",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:13c925bbec7fd0913616cc7c203a33962d6eeaa971962891580b6f066a15209b",
+        "name": "gateway-image-pinned-by-digest",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp",
+        "name": "azure-gateway:tls",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0",
+        "name": "azure-gateway:entra-oauth-required",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "api://51ef982d-d64a-4052-aebc-21c0232d0d9f",
+        "name": "azure-gateway:audience-is-entra-api",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "tag-compliance:read",
+        "name": "azure-gateway:scopes-declared",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "2 calling app(s)",
+        "name": "azure-gateway:allowed-callers-declared",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "gateway-only",
+        "name": "azure-gateway:agent-reachable-only-through-gateway",
+        "passed": true,
+        "stage": "platform"
+      },
+      {
+        "detail": "internal -> ['oasis']",
+        "name": "restricted-not-externally-distributed",
+        "passed": true,
+        "stage": "platform"
+      }
+    ],
+    "manifest_sha256": "4f975216a14f8609e69a6f6ae9d50e8fa915f89da7a84c399eb3b0820247b61c",
+    "pipeline_run": "43897006128",
+    "pull_request": "3ac4c382c3c2deb415d250dafb3b13c631eadc74",
+    "skill_sha256": "6f460eb8e5e1e7e649469378572603c91c7c5c4e4b68494bfc4420c461ce45dd",
+    "source_ref": "3ac4c382c3c2deb415d250dafb3b13c631eadc74"
+  },
+  "artifact": {
+    "gateway_image": "ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:13c925bbec7fd0913616cc7c203a33962d6eeaa971962891580b6f066a15209b",
+    "image": "ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d",
+    "sha256": "ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d",
+    "type": "container-image"
+  },
+  "audience": [
+    "engineering-all"
+  ],
+  "capability_id": "ahead.tag-compliance",
+  "classification": "internal",
+  "deployments": [
+    {
+      "auth": {
+        "allowed_callers": [
+          "9f5d8242-f873-42b8-b521-3e47e08f4d71",
+          "cbafe554-ca44-459c-a2b8-16a63764c738"
+        ],
+        "audience": "api://51ef982d-d64a-4052-aebc-21c0232d0d9f",
+        "issuer": "https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0",
+        "scopes": [
+          "tag-compliance:read"
+        ],
+        "type": "oauth2-bearer"
+      },
+      "endpoint": "https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp",
+      "gateway_image": "ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:13c925bbec7fd0913616cc7c203a33962d6eeaa971962891580b6f066a15209b",
+      "id": "azure-gateway",
+      "image": "ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d",
+      "ingress": "gateway-only",
+      "transport": "streamable-http"
+    }
+  ],
+  "description": "Inspects an Azure resource group for resources missing an owner tag. Read-only.",
+  "distribution": [
+    "oasis"
+  ],
+  "evaluation": {
+    "file": "evaluation.json",
+    "passed": true,
+    "sha256": "a808c388b9761e4063a273b4b556a342046a0d75fb1bf5f0b41b883aef0982d6",
+    "suite": "agent-contract/v1"
+  },
+  "kind": "agent",
+  "name": "Tag Compliance Agent",
+  "owner": {
+    "contact": "owner@example.invalid",
+    "team": "eTech Platform (placeholder)"
+  },
+  "schema_digest": "f67a0092397ca5fddabeeb72786231dda5a6ec102aa50571af0947171c9fa029",
+  "signature": "220eaa6e959d3277e852d751d41b029e1969404089529829bc6fa0be56e9562a",
+  "status": "approved",
+  "tools": [
+    "tag.inspect"
+  ],
+  "version": "0.1.0"
+}
