@@ -153,3 +153,46 @@ def test_tag_tool_needs_a_signed_in_session_and_audits_the_agent(monkeypatch, tm
     assert "3 resources" in json.dumps(out, default=str)
     recs = [json.loads(l) for l in open(tmp_path / "a.jsonl")]
     assert [r["decision"] for r in recs] == ["deny", "allow"] and "ahead.tag-compliance" in recs[1]["reason"]
+
+
+def test_control_contracts_are_complete_and_blanks_fail(tmp_path):
+    from govpipeline import contract
+    rows, errs = contract.check_all()
+    assert errs == [] and {r["platform"] for r in rows} >= {"aws", "azure", "mulesoft"}
+    bad = tmp_path / "contract.yaml"
+    bad.write_text("platform: x\nplatform_owner: ''\ncontrols:\n  suspension: {status: enforced, owner: o, enforced_by: e, evidence: README.md, max_seconds: 600}\n"
+                   "  cost_limit: {status: gap, owner: o}\n")
+    e = "\n".join(contract.validate(str(bad)))
+    assert "platform_owner is blank" in e and "token_validation' is not declared" in e
+    assert "max_seconds" in e and "a gap must say what is missing" in e
+
+
+def test_eval_spec_and_pass_k():
+    from govpipeline import evaluate
+    ok = [{"id": "a", "expected_tool_path": ["list_projects"], "platform": "aws", "runs": 3}]
+    assert evaluate.validate_spec(ok, ["list_projects"]) == []
+    bad = [{"id": "b", "expected_tool_path": ["nope"], "platform": "mars", "runs": 0}]
+    assert len(evaluate.validate_spec(bad, ["list_projects"])) == 3
+
+
+def test_correlation_id_is_accepted_only_when_well_formed():
+    from platform_gateway.correlation import clean
+    assert clean("abc12345-def") == "abc12345-def"
+    assert clean("x") != "x" and len(clean("bad value with spaces")) == 32 and clean(None)
+
+
+def test_codex_requirements_allow_only_approved_remote_servers(tmp_path, monkeypatch):
+    from govpipeline import codexconfig
+    from govpipeline.workspace import Workspace
+    monkeypatch.setenv("GMO_SIGNING_KEY", "unit-test-only-signing-key-0123456789")
+    monkeypatch.setenv("GMO_REVOCATIONS", str(tmp_path / "rev.json"))
+    ws = Workspace(str(tmp_path / "ws"))
+    reg = regmod.Registry(ws.registry)
+    rec = {"capability_id": "ahead.a", "version": "1.0.0", "status": "approved", "kind": "agent", "distribution": ["oasis"],
+           "artifact": {"type": "container-image", "image": "r/a@sha256:" + "a" * 64, "sha256": "a" * 64},
+           "deployments": [{"id": "g", "transport": "streamable-http", "endpoint": "https://a.example/mcp"}]}
+    reg.publish(rec, None, {})
+    req = codexconfig.build(ws)["requirements.toml"]
+    assert 'identity = { url = "https://a.example/mcp" }' in req and '"never"' not in req
+    revocations.suspend("ahead.a", reason="x", by="t")
+    assert "https://a.example/mcp" not in codexconfig.build(ws)["requirements.toml"]

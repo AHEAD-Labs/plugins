@@ -1,5 +1,5 @@
 """Pipeline: PR -> common checks -> platform checks -> approved artifact (registry)."""
-import getpass, os, time, uuid
+import getpass, json, os, time, uuid
 
 from . import build, checks, evaluate
 from .manifest import Manifest, load
@@ -50,6 +50,9 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
 
         # --- evaluation evidence
         entry = m.deployment("stdio").package.entrypoint
+        spec_errs = evaluate.validate_spec(json.load(open(os.path.join(base, "eval_cases.json"))), m.tools)
+        log.append(checks.Check("common", "eval-spec-valid", not spec_errs, "; ".join(spec_errs) or "fields well formed"))
+        _gate(log)
         evidence = evaluate.evaluate(unpacked, wheel_sha, os.path.join(ws.work, run_id), entry,
                                      os.path.join(base, "eval_cases.json"))
         log.append(checks.Check("common", "evaluation-passed", evidence["passed"],

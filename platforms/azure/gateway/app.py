@@ -8,7 +8,7 @@ Every call is checked BEFORE it reaches the agent:
 Then it forwards with the agent's own API key (the user's token is never passed on) and writes one
 audit line per decision: user, calling app, capability, version, tool, decision.
 """
-import json, os, time, uuid
+import contextvars, json, os, re, time, uuid
 
 import httpx
 from starlette.applications import Starlette
@@ -24,15 +24,19 @@ SCOPE = os.environ.get("GMO_REQUIRED_SCOPE", "tag-compliance:read")
 ALLOWED = {c for c in os.environ.get("GMO_ALLOWED_CALLERS", "").split(",") if c}
 
 
+CID: contextvars.ContextVar = contextvars.ContextVar("cid", default=None)
+_CID_OK = re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+
+
 def audit(**kw) -> None:  # stdout -> Container Apps -> Log Analytics
     print(json.dumps({"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "event_id": uuid.uuid4().hex,
-                      "source": "gateway", "capability_id": CAP, "version": VER, "transport": "streamable-http", **kw}), flush=True)
+                      "correlation_id": CID.get(), "source": "gateway", "capability_id": CAP, "version": VER, "transport": "streamable-http", **kw}), flush=True)
 
 
 def deny(status: int, reason: str, **ctx) -> JSONResponse:
     audit(decision="deny", reason=reason, **ctx)
     h = {"WWW-Authenticate": 'Bearer error="invalid_token"'} if status == 401 else {}
-    return JSONResponse({"error": reason}, status_code=status, headers=h)
+    return JSONResponse({"error": reason}, status_code=status, headers={**h, "x-correlation-id": CID.get() or ""})
 
 
 async def health(_: Request) -> Response:
@@ -40,6 +44,8 @@ async def health(_: Request) -> Response:
 
 
 async def mcp(request: Request) -> Response:
+    given = request.headers.get("x-correlation-id", "")
+    CID.set(given if _CID_OK.match(given) else uuid.uuid4().hex)  # same id as the calling MCP, so one action is one trail
     auth = request.headers.get("authorization", "")
     if not auth.lower().startswith("bearer "):
         return deny(401, "no_token", user=None)
@@ -72,7 +78,8 @@ async def mcp(request: Request) -> Response:
             "Content-Type": "application/json", "Accept": request.headers.get("accept", "application/json"),
             "x-api-key": os.environ["GMO_AGENT_KEY"]})
     audit(decision="allow", tool=tool, upstream_status=r.status_code, **ctx)
-    return Response(r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"))
+    return Response(r.content, status_code=r.status_code, media_type=r.headers.get("content-type", "application/json"),
+                    headers={"x-correlation-id": CID.get() or ""})
 
 
 app = Starlette(routes=[Route("/health", health), Route("/mcp", mcp, methods=["POST"])])

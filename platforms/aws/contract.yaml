@@ -1,0 +1,37 @@
+platform: aws
+platform_owner: eTech Platform (placeholder)
+controls:
+  token_validation:
+    status: enforced
+    enforced_by: API Gateway JWT authorizer (issuer, audience, scope) and again in the function (Entra JWKS)
+    owner: eTech Platform (placeholder)
+    evidence: platforms/aws/deploy.py
+  authorization:
+    status: enforced
+    enforced_by: backend authorizes per user; the gateway never widens it
+    owner: system owner (synthetic backend)
+    evidence: src/project_status/data.py
+  audit_event:
+    status: enforced
+    enforced_by: audit record per decision with user, capability, version, correlation id (CloudWatch)
+    owner: Security (placeholder)
+    evidence: src/project_status/audit.py
+  suspension:
+    status: enforced
+    enforced_by: S3 suspension list read by the function, 5 s cache, fails closed
+    owner: Platform on-call (placeholder)
+    evidence: src/platform_gateway/revocations.py
+    max_seconds: 5
+  rate_limit:
+    status: enforced
+    enforced_by: API Gateway stage throttle, 10 requests/s burst 20
+    owner: eTech Platform (placeholder)
+    evidence: platforms/aws/deploy.py
+  cost_limit:
+    status: gap
+    owner: eTech Platform (placeholder)
+    note: monthly budget exists ($25, tag-filtered) but has no alert recipient, so nobody is told when it is reached
+  telemetry:
+    status: gap
+    owner: Security operations (placeholder)
+    note: logs stay in CloudWatch; not yet forwarded to the Arm telemetry destination (Dynatrace)

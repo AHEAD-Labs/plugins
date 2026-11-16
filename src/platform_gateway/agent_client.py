@@ -13,6 +13,7 @@ import asyncio, json, os
 
 import httpx
 
+from project_status.audit import CORRELATION
 from . import obo
 
 _secret_cache: dict[str, str] = {}
@@ -48,7 +49,8 @@ async def call_tool(user_token: str, tool: str, arguments: dict, *, transport: h
     async with httpx.AsyncClient(transport=transport, timeout=90) as c:
         r = await c.post(os.environ["GMO_AGENT_ENDPOINT"], headers={
             "Authorization": f"Bearer {agent_token}", "Content-Type": "application/json",
-            "Accept": "application/json, text/event-stream"},
+            "Accept": "application/json, text/event-stream",
+            **({"x-correlation-id": CORRELATION.get()} if CORRELATION.get() else {})},
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool, "arguments": arguments}})
     if r.status_code in (401, 403):
         reason = r.json().get("error", "refused") if r.headers.get("content-type", "").startswith("application/json") else "refused"
