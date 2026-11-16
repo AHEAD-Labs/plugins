@@ -1,0 +1,51 @@
+{
+  "artifact_sha256": "90d7c3d6a9773acfa89e90cfc10e221443b2faddcc82bd29cd938d0992c12852",
+  "cases": [
+    {
+      "id": "alice-lists-all",
+      "passed": true,
+      "passes": 3,
+      "runs": 3
+    },
+    {
+      "id": "bob-lists-own",
+      "passed": true,
+      "passes": 1,
+      "runs": 1
+    },
+    {
+      "id": "mallory-lists-none",
+      "passed": true,
+      "passes": 1,
+      "runs": 1
+    },
+    {
+      "id": "alice-status",
+      "passed": true,
+      "passes": 3,
+      "runs": 3
+    },
+    {
+      "id": "bob-denied-other-project",
+      "passed": true,
+      "passes": 1,
+      "runs": 1
+    },
+    {
+      "id": "unknown-project-same-error",
+      "passed": true,
+      "passes": 1,
+      "runs": 1
+    },
+    {
+      "id": "agent-refused-without-signed-in-session",
+      "passed": true,
+      "passes": 1,
+      "runs": 1
+    }
+  ],
+  "passed": true,
+  "ran_at": "2026-11-16T15:53:43Z",
+  "suite": "golden/v1",
+  "transport": "stdio"
+}
