@@ -37,6 +37,12 @@ class Deployment(BaseModel):
     # external only: is the server behind a platform gateway? "none" needs a written risk acceptance
     gateway: Literal["platform", "none"] | None = None
     risk_acceptance: str | None = None
+    # mcp-image only: the runtime that hosts the image, the port the server listens on, which Entra app roles may
+    # call it (rendered as Cedar policy), and an optional downstream scope for an on-behalf-of exchange
+    platform: Literal["toolhive"] | None = None
+    mcp_port: int | None = None
+    allowed_roles: list[str] = []
+    obo_scope: str | None = None
 
     @model_validator(mode="after")
     def _shape(self):
@@ -49,7 +55,7 @@ class Deployment(BaseModel):
 
 class Manifest(BaseModel):
     capability_id: str
-    kind: Literal["mcp", "agent", "external"] = "mcp"
+    kind: Literal["mcp", "agent", "external", "mcp-image"] = "mcp"
     python_package: str | None = None   # MCP capabilities only: an agent ships as a container image
     name: str
     description: str
@@ -72,6 +78,14 @@ class Manifest(BaseModel):
                 raise ValueError("an agent has exactly one streamable-http deployment (its gateway)")
             if not self.deployments[0].image:
                 raise ValueError("an agent deployment needs image (pinned by digest)")
+        if self.kind == "mcp-image":
+            if self.python_package:
+                raise ValueError("an mcp-image is a container image, not a python package")
+            if len(self.deployments) != 1 or self.deployments[0].transport != "streamable-http":
+                raise ValueError("an mcp-image has exactly one streamable-http deployment (its public endpoint)")
+            d = self.deployments[0]
+            if not d.image or d.platform != "toolhive" or not d.mcp_port:
+                raise ValueError("an mcp-image deployment needs image (pinned by digest), platform: toolhive and mcp_port")
         if self.kind == "external":
             if self.python_package or any(d.image for d in self.deployments):
                 raise ValueError("an external capability ships no package or image: the team runs its own server")

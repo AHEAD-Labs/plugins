@@ -1,0 +1,26 @@
+# EXAMPLE of an MCP shipped as a container image and hosted by ToolHive. Not released from here.
+capability_id: ahead.status-image
+kind: mcp-image
+name: Status (ToolHive example)
+description: Example MCP hosted on ToolHive behind Entra sign-in and Cedar policy.
+owner:
+  team: eTech Platform (placeholder)
+  contact: owner@example.invalid
+version: 0.1.0
+audience: [engineering-all]
+classification: internal
+tools: [list_projects, get_project_status]
+deployments:
+  - id: toolhive
+    transport: streamable-http
+    platform: toolhive
+    endpoint: https://mcp.example.invalid/status
+    image: registry.example.invalid/status@sha256:0000000000000000000000000000000000000000000000000000000000000000
+    mcp_port: 8080
+    allowed_roles: [Status.Read]
+    auth:
+      type: oauth2-bearer
+      issuer: https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0
+      audience: https://mcp.example.invalid/status
+      scopes: [openid]
+distribution: [openai-codex-plugin]

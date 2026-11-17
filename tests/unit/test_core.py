@@ -268,3 +268,76 @@ def test_external_catalogue_uses_approved_folder(tmp_path):
     e = feed["entries"][0]
     assert e["kind"] == "external" and "remote" in e["install"]
     assert os.path.exists(os.path.join(ws.catalogue, "openai-workspace", "plugins", "wiki-search", ".app.json"))
+
+
+TOOLHIVE = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "toolhive-mcp")
+ENTRA = {"issuer": "https://login.microsoftonline.com/t/v2.0", "tenant_id": "t", "toolhive_client_id": "c"}
+
+
+def _release_toolhive(tmp_path, mutate=None):
+    import shutil
+    from govpipeline.release import release
+    from govpipeline.workspace import Workspace
+    os.environ["GMO_SIGNING_KEY"] = "test-signing-key-0123456789abcdef"
+    d = tmp_path / "th"
+    shutil.copytree(TOOLHIVE, d)
+    if mutate:
+        mt = (d / "manifest.yaml").read_text()
+        (d / "manifest.yaml").write_text(mutate(mt))
+    return release(str(d / "manifest.yaml"), Workspace(str(tmp_path / "ws")), run_tests=False)
+
+
+def test_mcp_image_release_and_render(tmp_path):
+    import importlib.util
+    rec = _release_toolhive(tmp_path)
+    assert rec["kind"] == "mcp-image" and rec["artifact"]["type"] == "container-image"
+    spec = importlib.util.spec_from_file_location("th_render", os.path.join(os.path.dirname(MANIFEST), "..", "..", "platforms", "toolhive", "render.py"))
+    r = importlib.util.module_from_spec(spec); spec.loader.exec_module(r)
+    docs = r.render(rec, ENTRA, otel_endpoint="otel.example:4318")
+    kinds = [x["kind"] for x in docs]
+    assert kinds == ["MCPExternalAuthConfig", "MCPOIDCConfig", "MCPAuthzConfig", "MCPTelemetryConfig", "MCPServer"]
+    server = docs[-1]["spec"]
+    assert server["image"] == rec["deployments"][0]["image"] and server["oidcConfigRef"]["audience"] == "https://mcp.example.invalid/status"
+    assert "authServerRef" in server and "authzConfigRef" in server        # never rendered without auth
+    pol = docs[2]["spec"]["config"]["policies"]
+    assert len(pol) == 2 and all("Status.Read" in p for p in pol)           # one policy per tool and role
+    assert docs[-1]["metadata"]["annotations"]["gmo/release-signature"] == rec["signature"]
+
+
+def test_mcp_image_gate(tmp_path):
+    from govpipeline.release import ReleaseRejected
+    for mutate, check in [
+        (lambda t: t.replace("@sha256:" + "0" * 64, ":latest"), "mcp-image-pinned-by-digest"),
+        (lambda t: t.replace("allowed_roles: [Status.Read]", "allowed_roles: []"), "allowed-roles-declared"),
+        (lambda t: t.replace("audience: https://mcp.example.invalid/status", "audience: api://shared"), "audience-unique-to-endpoint"),
+    ]:
+        with pytest.raises(ReleaseRejected, match=check):
+            _release_toolhive(tmp_path / check, mutate)
+
+
+def test_toolhive_contract_valid():
+    from govpipeline import contract
+    assert contract.validate(os.path.join(os.path.dirname(MANIFEST), "..", "..", "platforms", "toolhive", "contract.yaml")) == []
+
+
+def _jwt(claims: dict) -> str:
+    import base64
+    b = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).rstrip(b"=").decode()
+    return f"{b({'alg': 'none'})}.{b(claims)}.sig"
+
+
+def test_toolhive_identity_from_bearer():
+    from project_status import toolhive_main as t
+    assert t.user_from_bearer("Bearer " + _jwt({"preferred_username": "Alice", "sub": "x"})) == "alice"
+    assert t.user_from_bearer("Bearer " + _jwt({"sub": "only-sub"})) == "only-sub"
+    assert t.user_from_bearer(None) is None and t.user_from_bearer("Basic abc") is None and t.user_from_bearer("Bearer junk") is None
+    t.USER.set(None)
+    with pytest.raises(PermissionError):
+        t.identity()
+
+
+def test_toolhive_refuses_to_start_untrusted(monkeypatch):
+    from project_status import toolhive_main as t
+    monkeypatch.delenv("GMO_TRUST_PROXY", raising=False)
+    with pytest.raises(SystemExit, match="GMO_TRUST_PROXY"):
+        t.main()

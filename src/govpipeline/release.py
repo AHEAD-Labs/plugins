@@ -43,11 +43,11 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
         log += checks.external_checks(m, base, snapshot)
         _gate(log)
         extra_files = [pf["root"], os.path.join(base, "tools.json")]
-    elif m.kind == "agent":
+    elif m.kind in ("agent", "mcp-image"):
         # no wheel: the artifact is the container image, pinned by digest in the signed record
         d = m.deployments[0]
-        artifact = {"type": "container-image", "image": d.image, "gateway_image": d.gateway_image,
-                    "sha256": d.image.split("@sha256:")[-1]}
+        artifact = {"type": "container-image", "image": d.image, "sha256": d.image.split("@sha256:")[-1],
+                    **({"gateway_image": d.gateway_image} if m.kind == "agent" else {})}
         schema = {"digest": sha_tools(m.tools)}
         log += checks.common_agent(m)
         _gate(log)
@@ -55,7 +55,7 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
         log.append(checks.Check("common", "evaluation-passed", evidence["passed"],
                                 f"{sum(c['passed'] for c in evidence['cases'])}/{len(evidence['cases'])} contract cases"))
         _gate(log)
-        log += checks.agent_checks(m)
+        log += checks.agent_checks(m) if m.kind == "agent" else checks.mcp_image_checks(m)
         _gate(log)
     else:
         # --- build the artifact, then derive everything else from the artifact itself
