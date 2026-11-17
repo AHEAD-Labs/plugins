@@ -100,6 +100,23 @@ def agent_checks(m: Manifest) -> list[Check]:
     return out
 
 
+def mcp_image_checks(m: Manifest) -> list[Check]:
+    """An MCP shipped as an image and hosted by ToolHive. ToolHive treats a server with no OIDC config as open to
+    anyone who can reach it, so token settings, a unique audience and the allowed roles are mandatory here."""
+    d = m.deployments[0]
+    return [
+        Check("platform", "mcp-image-pinned-by-digest", bool(_DIGEST.match(d.image or "")), d.image or ""),
+        Check("platform", f"{d.id}:tls", (d.endpoint or "").startswith("https://"), d.endpoint or ""),
+        Check("platform", f"{d.id}:entra-oauth-required", d.auth.type == "oauth2-bearer"
+              and "login.microsoftonline.com" in (d.auth.issuer or ""), d.auth.issuer or d.auth.type),
+        Check("platform", f"{d.id}:audience-unique-to-endpoint", d.auth.audience == d.endpoint, f"aud={d.auth.audience}"),
+        Check("platform", f"{d.id}:scopes-declared", bool(d.auth.scopes), ",".join(d.auth.scopes)),
+        Check("platform", f"{d.id}:allowed-roles-declared", bool(d.allowed_roles), ",".join(d.allowed_roles)),
+        Check("platform", "restricted-not-externally-distributed",
+              not (m.classification == "restricted" and "openai-codex-plugin" in m.distribution), f"{m.classification} -> {m.distribution}"),
+    ]
+
+
 def plugin_files(base: str) -> dict:
     """The submitted plugin folder (Codex plugin layout). `.app.json` content is not confirmed: only that it is valid JSON."""
     root = os.path.join(base, "plugin")

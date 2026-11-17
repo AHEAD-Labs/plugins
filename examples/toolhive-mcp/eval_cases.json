@@ -1,0 +1,1 @@
+[{"id":"lists","tool":"list_projects","args":{},"expect":"returns projects"},{"id":"status","tool":"get_project_status","args":{"project_id":"PRJ-001"},"expect":"returns status"}]
