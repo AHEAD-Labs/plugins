@@ -84,7 +84,7 @@ jobs:
   #    deploy never leaves the registry half-written. No stored AWS keys: OIDC role, gmo-* only.
   deploy:
     needs: release
-    if: needs.release.outputs.released != '0'
+    if: needs.release.outputs.released != '0' || github.event_name == 'workflow_dispatch'   # a manual run redeploys the latest approved release
     runs-on: ubuntu-latest
     environment: production
     permissions:
