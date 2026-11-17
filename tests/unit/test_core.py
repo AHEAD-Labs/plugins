@@ -318,3 +318,26 @@ def test_mcp_image_gate(tmp_path):
 def test_toolhive_contract_valid():
     from govpipeline import contract
     assert contract.validate(os.path.join(os.path.dirname(MANIFEST), "..", "..", "platforms", "toolhive", "contract.yaml")) == []
+
+
+def _jwt(claims: dict) -> str:
+    import base64
+    b = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).rstrip(b"=").decode()
+    return f"{b({'alg': 'none'})}.{b(claims)}.sig"
+
+
+def test_toolhive_identity_from_bearer():
+    from project_status import toolhive_main as t
+    assert t.user_from_bearer("Bearer " + _jwt({"preferred_username": "Alice", "sub": "x"})) == "alice"
+    assert t.user_from_bearer("Bearer " + _jwt({"sub": "only-sub"})) == "only-sub"
+    assert t.user_from_bearer(None) is None and t.user_from_bearer("Basic abc") is None and t.user_from_bearer("Bearer junk") is None
+    t.USER.set(None)
+    with pytest.raises(PermissionError):
+        t.identity()
+
+
+def test_toolhive_refuses_to_start_untrusted(monkeypatch):
+    from project_status import toolhive_main as t
+    monkeypatch.delenv("GMO_TRUST_PROXY", raising=False)
+    with pytest.raises(SystemExit, match="GMO_TRUST_PROXY"):
+        t.main()
