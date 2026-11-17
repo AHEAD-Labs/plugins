@@ -1,0 +1,16 @@
+# Generated 2026-11-17T14:25:40Z from the signed registry. Do not edit by hand.
+# FORMAT UNCONFIRMED: check field names against OpenAI's current managed-configuration docs.
+
+allowed_approval_policies = ["untrusted", "on-request"]
+allowed_sandbox_modes = ["read-only", "workspace-write"]
+
+# ahead.project-status@0.2.3
+[mcp_servers.project-status-remote]
+identity = { url = "https://p2zct3rhl4.execute-api.us-east-1.amazonaws.com/mcp" }
+
+# ahead.tag-compliance@0.1.1
+[mcp_servers.tag-compliance-remote]
+identity = { url = "https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp" }
+
+# NOT PINNED (local stdio servers cannot be identified by an allowlist): ahead.incident-lookup, ahead.project-status
+

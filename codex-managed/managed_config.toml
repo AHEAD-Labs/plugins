@@ -1,0 +1,5 @@
+# Generated 2026-11-17T14:25:40Z from the signed registry. Do not edit by hand.
+# FORMAT UNCONFIRMED: check field names against OpenAI's current managed-configuration docs.
+
+# Codex telemetry is off by default; this switches it on for managed devices.
+# [otel] not written: no telemetry destination given (--otel-endpoint). This is an open gap.
