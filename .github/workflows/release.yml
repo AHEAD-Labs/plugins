@@ -118,6 +118,23 @@ jobs:
           T: ${{ vars.ENTRA_TENANT_ID }}
           C: ${{ vars.ENTRA_API_CLIENT_ID }}
           X: ${{ vars.ENTRA_CODEX_CLIENT_ID }}
+      - name: Real Entra token for the CI check (federated, no secret stored)
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.parse, urllib.request
+          u = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&audience=api://AzureADTokenExchange"
+          rq = urllib.request.Request(u, headers={"Authorization": "bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]})
+          assertion = json.load(urllib.request.urlopen(rq))["value"]
+          body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": os.environ["CI"],
+              "scope": "https://graph.microsoft.com/.default", "client_assertion": assertion,
+              "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"}).encode()
+          tok = json.load(urllib.request.urlopen(f"https://login.microsoftonline.com/{os.environ['T']}/oauth2/v2.0/token", body))["access_token"]
+          print("::add-mask::" + tok)
+          open(os.environ["GITHUB_ENV"], "a").write("GMO_CI_ENTRA_TOKEN=" + tok + "\n")
+          PY
+        env:
+          T: ${{ vars.ENTRA_TENANT_ID }}
+          CI: ${{ vars.ENTRA_CI_CLIENT_ID }}
       - name: Deploy latest approved project-status to AWS, then run the live checks
         run: |
           uv run python platforms/aws/deploy.py --registry .gmo/registry --cap ahead.project-status \

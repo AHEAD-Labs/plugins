@@ -152,6 +152,9 @@ async def selfcheck_ci(endpoint):
     ok("no token -> 401", await mc.http_status(endpoint, None) == 401)
     ok("garbage token -> 401", await mc.http_status(endpoint, "not-a-jwt") == 401)
     ok("demo (HS256) token -> 401", await mc.http_status(endpoint, idp.mint("alice", endpoint)) == 401)
+    real = os.environ.get("GMO_CI_ENTRA_TOKEN")  # a REAL Entra token, issued to the CI identity for another API (Graph)
+    if real:
+        ok("real Entra token for another API -> 401", await mc.http_status(endpoint, real) == 401)
     return out
 
 

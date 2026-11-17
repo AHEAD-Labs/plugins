@@ -7,7 +7,7 @@ description: Inspects an Azure resource group for resources missing an owner tag
 owner:
   team: eTech Platform (placeholder)
   contact: owner@example.invalid
-version: 0.1.0
+version: 0.1.1
 audience: [engineering-all]
 classification: internal
 tools: [tag.inspect]
@@ -16,7 +16,7 @@ deployments:
     transport: streamable-http
     endpoint: https://gmo-agent-gateway.gentlecoast-92cdab52.westus2.azurecontainerapps.io/mcp
     image: ca165df5fe9cacr.azurecr.io/tag-compliance-elna@sha256:ab37146b886bd81f0feab984a1776ce5973d47015b99b1f045f90fa15d25f13d
-    gateway_image: ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:13c925bbec7fd0913616cc7c203a33962d6eeaa971962891580b6f066a15209b
+    gateway_image: ca165df5fe9cacr.azurecr.io/gmo-agent-gateway@sha256:157bbb943f6af3e3349232734ab6e54f81e791b22a152b575ad4e8ec650249ee
     ingress: gateway-only    # the agent's own address is internal to the environment
     auth:
       type: oauth2-bearer
