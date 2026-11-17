@@ -54,7 +54,7 @@ async def call_tool(user_token: str, tool: str, arguments: dict, *, transport: h
         obo.exchange, user_token, tenant=os.environ["GMO_ENTRA_TENANT"], client_id=os.environ["GMO_OBO_CLIENT_ID"],
         client_secret=secret, scope=os.environ["GMO_AGENT_SCOPE"], timeout=8)
     _step("obo_exchange", t0)
-    async with httpx.AsyncClient(transport=transport, timeout=18) as c:
+    async with httpx.AsyncClient(transport=transport, timeout=max(5, min(24, 27 - (time.time() - t0)))) as c:  # whole call must end inside the Lambda 29 s limit
         r = await c.post(os.environ["GMO_AGENT_ENDPOINT"], headers={
             "Authorization": f"Bearer {agent_token}", "Content-Type": "application/json",
             "Accept": "application/json, text/event-stream",
