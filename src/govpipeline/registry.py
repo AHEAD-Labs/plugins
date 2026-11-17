@@ -1,7 +1,7 @@
 """Approved artifact registry: immutable, signed release records + the artifact itself."""
 import hashlib, hmac, json, os, shutil
 
-from .util import sha256_file
+from .util import sha256_file, sha256_tree
 
 def KEY() -> bytes:
     """Signing key. Local runs may use the dev default; CI must provide a real key, and an
@@ -42,7 +42,10 @@ class Registry:
         if wheel:
             shutil.copy(wheel, d)
         for f in files:
-            shutil.copy(f, d)
+            if os.path.isdir(f):
+                shutil.copytree(f, os.path.join(d, os.path.basename(f)))
+            else:
+                shutil.copy(f, d)
         for name, body in evidence.items():
             json.dump(body, open(os.path.join(d, name), "w"), indent=2, sort_keys=True)
         rec = {**rec, "signature": sign(rec)}
@@ -55,7 +58,10 @@ class Registry:
         rec = json.load(open(os.path.join(d, "release.json")))
         if not hmac.compare_digest(rec["signature"], sign(rec)):
             raise ValueError(f"release record signature invalid for {cap}@{ver}")
-        if rec["artifact"].get("type") != "container-image":  # an image is pinned by digest in the signed record
+        if rec["artifact"].get("type") == "external-endpoint":  # the signed record pins the tool list and the plugin folder
+            if sha256_tree(os.path.join(d, "plugin")) != rec["artifact"]["plugin_sha256"]:
+                raise ValueError(f"plugin folder digest mismatch for {cap}@{ver}")
+        elif rec["artifact"].get("type") != "container-image":  # an image is pinned by digest in the signed record
             wheel = os.path.join(d, rec["artifact"]["filename"])
             if sha256_file(wheel) != rec["artifact"]["sha256"]:
                 raise ValueError(f"artifact digest mismatch for {cap}@{ver}")

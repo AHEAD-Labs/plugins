@@ -1,0 +1,1 @@
+{"name": "wiki-search", "version": "0.1.0", "description": "Searches the team wiki (read-only).", "skills": "./skills/", "apps": "./.app.json"}

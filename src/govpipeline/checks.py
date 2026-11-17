@@ -1,5 +1,5 @@
 """Stage 1: common checks (every capability). Stage 2: platform checks (per deployment platform)."""
-import json, os, re
+import glob, json, os, re
 from dataclasses import asdict, dataclass
 from urllib.parse import urlparse
 
@@ -96,6 +96,44 @@ def agent_checks(m: Manifest) -> list[Check]:
         Check("platform", "restricted-not-externally-distributed",
               not (m.classification == "restricted" and "openai-codex-plugin" in m.distribution),
               f"{m.classification} -> {m.distribution}"),
+    ]
+    return out
+
+
+def plugin_files(base: str) -> dict:
+    """The submitted plugin folder (Codex plugin layout). `.app.json` content is not confirmed: only that it is valid JSON."""
+    root = os.path.join(base, "plugin")
+    skills = sorted(glob.glob(os.path.join(root, "skills", "*", "SKILL.md")))
+    return {"root": root, "skills": skills}
+
+
+def _json_ok(path: str) -> bool:
+    try:
+        json.load(open(path)); return True
+    except (OSError, ValueError):
+        return False
+
+
+def external_checks(m: Manifest, base: str, snapshot: list) -> list[Check]:
+    """A capability whose server the submitting team runs: we cannot inspect the code, so we pin what we can see
+    (the tool list, the plugin folder) and make the gateway position explicit."""
+    d, pf = m.deployments[0], plugin_files(base)
+    names = sorted(t.get("name", "") for t in snapshot)
+    out = [
+        Check("platform", f"{d.id}:tls", (d.endpoint or "").startswith("https://"), d.endpoint or ""),
+        Check("platform", f"{d.id}:oauth-required", d.auth.type == "oauth2-bearer" and bool(d.auth.issuer), d.auth.issuer or d.auth.type),
+        Check("platform", f"{d.id}:audience-declared", bool(d.auth.audience), d.auth.audience or ""),
+        Check("platform", f"{d.id}:scopes-declared", bool(d.auth.scopes), ",".join(d.auth.scopes)),
+        Check("platform", "tools-snapshot-matches-manifest", names == sorted(m.tools), ",".join(names)),
+        Check("platform", "plugin-manifest-valid", _json_ok(os.path.join(pf["root"], ".codex-plugin", "plugin.json")), ".codex-plugin/plugin.json"),
+        Check("platform", "plugin-app-json-valid", _json_ok(os.path.join(pf["root"], ".app.json")), ".app.json (content not validated: format unconfirmed)"),
+        Check("platform", "plugin-has-skill", bool(pf["skills"]), f"{len(pf['skills'])} skill(s)"),
+        Check("platform", "gateway-position-explicit",
+              d.gateway == "platform" or (d.gateway == "none" and bool(d.risk_acceptance) and m.classification in ("public", "internal")),
+              "behind a platform gateway" if d.gateway == "platform" else
+              f"NO gateway: suspension and audit cannot be enforced; risk accepted: {d.risk_acceptance or 'missing'}"),
+        Check("platform", "restricted-not-externally-distributed",
+              not (m.classification == "restricted" and "openai-codex-plugin" in m.distribution), f"{m.classification} -> {m.distribution}"),
     ]
     return out
 

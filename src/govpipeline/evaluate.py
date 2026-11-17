@@ -55,12 +55,12 @@ def evaluate(unpacked: str, wheel_sha256: str, workdir: str, entry: str, cases_p
             "cases": results, "passed": all(r["passed"] for r in results)}
 
 
-def contract(tools: list[str], artifact_ref: str, cases_path: str) -> dict:
+def contract(tools: list[str], artifact_ref: str, cases_path: str, suite: str = "agent-contract/v1") -> dict:
     """Agent evidence before it is deployed: the eval cases only name declared tools and every tool has one.
     Behaviour against the live agent is checked after deployment (platforms/azure/check.py)."""
     cases = json.load(open(cases_path))
     results = [{"id": c["id"], "passed": c["tool"] in tools} for c in cases]
     results += [{"id": f"covers:{t}", "passed": any(c["tool"] == t for c in cases)} for t in tools]
-    return {"suite": "agent-contract/v1", "transport": "none (checked before deployment)", "artifact_sha256": artifact_ref,
+    return {"suite": suite, "transport": "none (checked before deployment)", "artifact_sha256": artifact_ref,
             "ran_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "cases": results, "passed": all(r["passed"] for r in results)}

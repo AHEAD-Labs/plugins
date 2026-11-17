@@ -26,3 +26,13 @@ def git_ref(cwd: str) -> str:
         return r.stdout.strip() if r.returncode == 0 else "unversioned"
     except OSError:
         return "unversioned"
+
+
+def sha256_tree(root: str) -> str:
+    """One digest for a folder: every file's relative path and content digest, sorted."""
+    items = []
+    for d, _, files in os.walk(root):
+        for f in files:
+            full = os.path.join(d, f)
+            items.append([os.path.relpath(full, root).replace(os.sep, "/"), sha256_file(full)])
+    return sha256_json(sorted(items))

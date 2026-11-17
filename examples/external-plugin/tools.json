@@ -1,0 +1,1 @@
+[{"name": "search_pages", "description": "Search wiki pages by keyword.", "inputSchema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}]
