@@ -1,0 +1,1 @@
+[{"id": "search", "tool": "search_pages", "args": {"query": "onboarding"}, "expect": "returns page titles"}]

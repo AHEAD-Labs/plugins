@@ -1,0 +1,24 @@
+# EXAMPLE of an external submission: the team runs its own server and shares only the plugin folder.
+# Copy this folder to capabilities/<name>/ to submit one. Not released from here.
+capability_id: ahead.wiki-search
+kind: external
+name: Wiki Search
+description: Searches the team wiki (read-only). Server owned and run by the Knowledge team.
+owner:
+  team: Knowledge Team (example)
+  contact: owner@example.invalid
+version: 0.1.0
+audience: [engineering-all]
+classification: internal
+tools: [search_pages]
+deployments:
+  - id: team-hosted
+    transport: streamable-http
+    endpoint: https://wiki-mcp.example.invalid/mcp
+    gateway: platform            # or "none" with a written risk_acceptance (internal/public data only)
+    auth:
+      type: oauth2-bearer
+      issuer: https://login.microsoftonline.com/cc9742cd-dcca-4219-abba-51ebf8d39cc6/v2.0
+      audience: api://00000000-0000-0000-0000-000000000000
+      scopes: [wiki:read]
+distribution: [openai-codex-plugin]

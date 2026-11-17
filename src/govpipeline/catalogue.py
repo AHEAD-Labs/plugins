@@ -74,6 +74,9 @@ def build_codex_plugin(ws: Workspace, entry: dict, base: str, only: str | None =
     entry = {**entry, "install": install}
     root = os.path.join(base, "plugins", name)
     shutil.rmtree(root, ignore_errors=True)
+    if entry.get("kind") == "external":  # the approved folder the team submitted, byte for byte
+        shutil.copytree(os.path.join(reg.dir(entry["capability_id"], entry["version"]), "plugin"), root)
+        return root
     os.makedirs(os.path.join(root, ".codex-plugin"))
     os.makedirs(os.path.join(root, "skills", name))
     shutil.copy(os.path.join(reg.dir(entry["capability_id"], entry["version"]), "SKILL.md"),

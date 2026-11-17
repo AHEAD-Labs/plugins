@@ -196,3 +196,75 @@ def test_codex_requirements_allow_only_approved_remote_servers(tmp_path, monkeyp
     assert 'identity = { url = "https://a.example/mcp" }' in req and '"never"' not in req
     revocations.suspend("ahead.a", reason="x", by="t")
     assert "https://a.example/mcp" not in codexconfig.build(ws)["requirements.toml"]
+
+
+EXTERNAL = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "external-plugin")
+
+
+def _copy_external(tmp_path):
+    import shutil
+    dst = tmp_path / "ext"
+    shutil.copytree(EXTERNAL, dst)
+    return dst
+
+
+def test_external_manifest_rules(tmp_path):
+    import yaml
+    from pydantic import ValidationError
+    from govpipeline.manifest import Manifest
+    base = yaml.safe_load(open(os.path.join(EXTERNAL, "manifest.yaml")))
+    assert Manifest.model_validate(base).kind == "external"
+    with pytest.raises(ValidationError):
+        Manifest.model_validate({**base, "python_package": "x"})
+    del base["deployments"][0]["gateway"]
+    with pytest.raises(ValidationError):
+        Manifest.model_validate(base)
+
+
+def test_external_release_signed_and_pinned(tmp_path):
+    from govpipeline.release import release
+    from govpipeline.registry import Registry
+    from govpipeline.workspace import Workspace
+    os.environ["GMO_SIGNING_KEY"] = "test-signing-key-0123456789abcdef"
+    ws = Workspace(str(tmp_path / "ws"))
+    d = _copy_external(tmp_path)
+    rec = release(str(d / "manifest.yaml"), ws, run_tests=False)
+    assert rec["kind"] == "external" and rec["artifact"]["built_by_us"] is False
+    assert all(c["passed"] for c in rec["approval"]["checks"])
+    reg = Registry(ws.registry)
+    reg.load("ahead.wiki-search", "0.1.0")                       # verifies signature and plugin folder digest
+    plugin_json = os.path.join(reg.dir("ahead.wiki-search", "0.1.0"), "plugin", ".codex-plugin", "plugin.json")
+    open(plugin_json, "a").write(" ")                              # tamper with the approved folder
+    with pytest.raises(ValueError, match="plugin folder digest"):
+        reg.load("ahead.wiki-search", "0.1.0")
+
+
+def test_external_gate_rejects(tmp_path):
+    from govpipeline.release import release, ReleaseRejected
+    from govpipeline.workspace import Workspace
+    os.environ["GMO_SIGNING_KEY"] = "test-signing-key-0123456789abcdef"
+    d = _copy_external(tmp_path)
+    # tool list that does not match the manifest
+    (d / "tools.json").write_text('[{"name": "other_tool"}]')
+    with pytest.raises(ReleaseRejected, match="tools-snapshot-matches-manifest"):
+        release(str(d / "manifest.yaml"), Workspace(str(tmp_path / "w1")), run_tests=False)
+    # no gateway and no written risk acceptance
+    d = _copy_external(tmp_path / "again") if False else d
+    (d / "tools.json").write_text(open(os.path.join(EXTERNAL, "tools.json")).read())
+    mt = (d / "manifest.yaml").read_text().replace("gateway: platform", "gateway: none")
+    (d / "manifest.yaml").write_text(mt)
+    with pytest.raises(ReleaseRejected, match="gateway-position-explicit"):
+        release(str(d / "manifest.yaml"), Workspace(str(tmp_path / "w2")), run_tests=False)
+
+
+def test_external_catalogue_uses_approved_folder(tmp_path):
+    from govpipeline import catalogue
+    from govpipeline.release import release
+    from govpipeline.workspace import Workspace
+    os.environ["GMO_SIGNING_KEY"] = "test-signing-key-0123456789abcdef"
+    ws = Workspace(str(tmp_path / "ws"))
+    release(str(_copy_external(tmp_path) / "manifest.yaml"), ws, run_tests=False)
+    feed = catalogue.publish(ws, remote_only=True)
+    e = feed["entries"][0]
+    assert e["kind"] == "external" and "remote" in e["install"]
+    assert os.path.exists(os.path.join(ws.catalogue, "openai-workspace", "plugins", "wiki-search", ".app.json"))

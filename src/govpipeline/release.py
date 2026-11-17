@@ -4,7 +4,7 @@ import getpass, json, os, time, uuid
 from . import build, checks, evaluate
 from .manifest import Manifest, load
 from .registry import Registry
-from .util import git_ref, sha256_file, sha256_json
+from .util import git_ref, sha256_file, sha256_json, sha256_tree
 from .workspace import Workspace
 
 
@@ -25,8 +25,25 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
     _gate(log)
 
     base = os.path.dirname(os.path.abspath(manifest_path))
-    wheel = None
-    if m.kind == "agent":
+    wheel, extra_files, skill_file = None, [], os.path.join(base, "SKILL.md")
+    if m.kind == "external":
+        d = m.deployments[0]
+        snapshot = json.load(open(os.path.join(base, "tools.json")))
+        pf = checks.plugin_files(base)
+        skill_file = pf["skills"][0] if pf["skills"] else skill_file
+        artifact = {"type": "external-endpoint", "endpoint": d.endpoint, "built_by_us": False,
+                    "sha256": sha256_json(snapshot), "plugin_sha256": sha256_tree(pf["root"]) if os.path.isdir(pf["root"]) else ""}
+        schema = {"digest": sha256_json(sorted(snapshot, key=lambda t: t.get("name", "")))}
+        log += checks.common_agent(m)
+        _gate(log)
+        evidence = evaluate.contract(m.tools, d.endpoint, os.path.join(base, "eval_cases.json"), suite="external-contract/v1")
+        log.append(checks.Check("common", "evaluation-passed", evidence["passed"],
+                                f"{sum(c['passed'] for c in evidence['cases'])}/{len(evidence['cases'])} contract cases"))
+        _gate(log)
+        log += checks.external_checks(m, base, snapshot)
+        _gate(log)
+        extra_files = [pf["root"], os.path.join(base, "tools.json")]
+    elif m.kind == "agent":
         # no wheel: the artifact is the container image, pinned by digest in the signed record
         d = m.deployments[0]
         artifact = {"type": "container-image", "image": d.image, "gateway_image": d.gateway_image,
@@ -82,7 +99,7 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
             "source_ref": git_ref(os.path.dirname(os.path.abspath(manifest_path))),
             "pull_request": os.environ.get("GMO_PR", "n/a (local run)"),
             "manifest_sha256": sha256_file(manifest_path),
-            "skill_sha256": sha256_file(os.path.join(base, "SKILL.md")),
+            "skill_sha256": sha256_file(skill_file),
             "checks": checks.as_dicts(log),
         },
         "status": "approved",
@@ -90,7 +107,7 @@ def release(manifest_path: str, ws: Workspace, *, run_tests: bool = True, dry_ru
     if dry_run:  # PR mode: every check ran, nothing is written to the registry
         return rec
     reg.publish(rec, wheel, {"evaluation.json": evidence, "checks.json": checks.as_dicts(log)},
-                files=[os.path.join(base, "SKILL.md"), manifest_path])
+                files=[skill_file, manifest_path, *extra_files])
     return reg.load(m.capability_id, m.version)
 
 
