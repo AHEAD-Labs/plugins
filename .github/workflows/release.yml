@@ -84,7 +84,7 @@ jobs:
   #    deploy never leaves the registry half-written. No stored AWS keys: OIDC role, gmo-* only.
   deploy:
     needs: release
-    if: needs.release.outputs.released != '0'
+    if: needs.release.outputs.released != '0' || github.event_name == 'workflow_dispatch'   # a manual run redeploys the latest approved release
     runs-on: ubuntu-latest
     environment: production
     permissions:
@@ -121,14 +121,17 @@ jobs:
       - name: Real Entra token for the CI check (federated, no secret stored)
         run: |
           python3 - <<'PY'
-          import json, os, urllib.parse, urllib.request
+          import json, os, urllib.error, urllib.parse, urllib.request
           u = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&audience=api://AzureADTokenExchange"
           rq = urllib.request.Request(u, headers={"Authorization": "bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]})
           assertion = json.load(urllib.request.urlopen(rq))["value"]
           body = urllib.parse.urlencode({"grant_type": "client_credentials", "client_id": os.environ["CI"],
               "scope": "https://graph.microsoft.com/.default", "client_assertion": assertion,
               "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"}).encode()
-          tok = json.load(urllib.request.urlopen(f"https://login.microsoftonline.com/{os.environ['T']}/oauth2/v2.0/token", body))["access_token"]
+          try:
+              tok = json.load(urllib.request.urlopen(f"https://login.microsoftonline.com/{os.environ['T']}/oauth2/v2.0/token", body))["access_token"]
+          except urllib.error.HTTPError as e:
+              print("::error::Entra refused the CI identity:", json.loads(e.read()).get("error_description", "")[:300]); raise SystemExit(1)
           print("::add-mask::" + tok)
           open(os.environ["GITHUB_ENV"], "a").write("GMO_CI_ENTRA_TOKEN=" + tok + "\n")
           PY
