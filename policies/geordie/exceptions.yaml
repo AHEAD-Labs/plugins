@@ -1,0 +1,9 @@
+# An exception switches one policy off for one target, with an owner and an expiry date. Expired entries fail CI.
+# Example (do not enable without approval):
+# - id: EX-001
+#   policy: P1
+#   target: "private EDA MCP launched through bsub"
+#   owner: owner@example.invalid
+#   reason: engineering/HPC private server (K-002)
+#   expires: 2027-03-31
+exceptions: []

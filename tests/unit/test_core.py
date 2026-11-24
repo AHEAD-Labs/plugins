@@ -341,3 +341,28 @@ def test_toolhive_refuses_to_start_untrusted(monkeypatch):
     monkeypatch.delenv("GMO_TRUST_PROXY", raising=False)
     with pytest.raises(SystemExit, match="GMO_TRUST_PROXY"):
         t.main()
+
+
+def test_geordie_policies_valid_and_rules(tmp_path):
+    import datetime, yaml
+    from govpipeline import geordie
+    pols, exc = geordie.load()
+    assert len(pols) == 10 and geordie.validate(pols, exc) == []
+    assert {p["objective"] for p in pols} == {"unauthorized-mcp", "data-leak"} and all(p["mode"] == "monitor" for p in pols)
+    bad = [{**pols[0], "mode": "block"}, {**pols[1], "id": "P2", "owner": ""}]
+    errs = geordie.validate(bad, [{"id": "EX", "policy": "P9", "owner": "a", "target": "t", "reason": "r", "expires": "2020-01-01"}],
+                            today=datetime.date(2026, 11, 24))
+    joined = " ".join(errs)
+    assert "block needs approved_by" in joined and "owner is blank" in joined and "does not exist" in joined and "expired" in joined
+
+
+def test_geordie_bundle_from_registry(tmp_path):
+    from govpipeline import geordie
+    from govpipeline.workspace import Workspace
+    _release_toolhive(tmp_path)  # puts one signed capability in tmp_path/ws
+    ws = Workspace(str(tmp_path / "ws"))
+    out = geordie.write(ws)
+    lst = json.load(open(os.path.join(out, "approved-mcp.json")))
+    assert [e["capability_id"] for e in lst["approved"]] == ["ahead.status-image"] and lst["blocked"] == []
+    assert lst["approved"][0]["identify"] == [{"remote_url": "https://mcp.example.invalid/status"}]
+    assert len(json.load(open(os.path.join(out, "policies.json")))["policies"]) == 10

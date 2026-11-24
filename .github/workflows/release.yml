@@ -34,6 +34,8 @@ jobs:
           GMO_PR: "${{ github.repository }}#${{ github.event.number }}"
       - name: Control contract (every platform declares its controls, owners and gaps)
         run: uv run gmo contract
+      - name: Geordie policies (valid, owners named, nothing blocks without approval, no expired exceptions)
+        run: uv run gmo geordie --check
 
   # 2. Merge to main: rebuild from the merged commit and write the signed release.
   release:
@@ -147,6 +149,8 @@ jobs:
         run: uv run gmo --ws .gmo catalogue --remote-only
       - name: Codex managed configuration (allowlist of approved remote servers, approval and sandbox floors)
         run: uv run gmo --ws .gmo codex-config
+      - name: Geordie policies and the approved / blocked MCP list
+        run: uv run gmo --ws .gmo geordie
       - name: Reconcile registry, deployment and catalogue (fails on drift)
         run: uv run gmo --ws .gmo reconcile
       - name: Publish the catalogue branch
