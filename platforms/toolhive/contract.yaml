@@ -1,0 +1,31 @@
+platform: toolhive
+platform_owner: KPaaS platform team (to be named)
+controls:
+  token_validation:
+    status: planned
+    owner: KPaaS platform team (to be named)
+    note: ToolHive proxy validates tokens from its embedded auth server (MCPOIDCConfig); Entra signs the user in. Not applied to a cluster yet
+  authorization:
+    status: planned
+    owner: KPaaS platform team (to be named)
+    note: Cedar default-deny rendered from allowed_roles (MCPAuthzConfig); role claim path to be verified on a cluster
+  audit_event:
+    status: planned
+    owner: Security (placeholder)
+    note: proxy logs and the audit store are not designed yet
+  suspension:
+    status: planned
+    owner: KPaaS platform team (to be named)
+    note: not designed for ToolHive; first idea is a Cedar policy fed from the suspension list, which must act within 60 s
+  rate_limit:
+    status: planned
+    owner: KPaaS platform team (to be named)
+    note: ToolHive has tool rate limiting; settings to confirm
+  cost_limit:
+    status: planned
+    owner: KPaaS platform team (to be named)
+    note: to confirm
+  telemetry:
+    status: planned
+    owner: Security operations (placeholder)
+    note: MCPTelemetryConfig is rendered when an OTLP endpoint is given; the Arm endpoint is not known yet

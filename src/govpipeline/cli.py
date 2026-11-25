@@ -30,6 +30,8 @@ def main(argv=None):
     sp.add_parser("stop", help="stop platform processes")
     cc = sp.add_parser("codex-config", help="generate Codex requirements.toml + managed_config.toml from the registry")
     cc.add_argument("--otel-endpoint", help="OTLP/HTTP endpoint for Codex telemetry (the Arm telemetry destination)")
+    gd = sp.add_parser("geordie", help="validate the Geordie policy files and write policies.json + approved-mcp.json")
+    gd.add_argument("--check", action="store_true", help="validate only (PR mode)")
     sp.add_parser("reconcile", help="check registry, deployments and catalogue agree (exit 1 on drift)")
     sp.add_parser("contract", help="check every platform's control contract (token, audit, suspension, limits, telemetry)")
     cg = sp.add_parser("catalogue", help="regenerate discovery feed + Codex plugin bundle")
@@ -81,6 +83,15 @@ def main(argv=None):
         from . import codexconfig
         out = codexconfig.write(ws, a.otel_endpoint)
         print(f"wrote {out}/requirements.toml and managed_config.toml")
+    elif a.cmd == "geordie":
+        from . import geordie
+        pols, exc = geordie.load()
+        errs = geordie.validate(pols, exc)
+        if errs:
+            print("geordie policies invalid:\n  " + "\n  ".join(errs)); sys.exit(1)
+        print(f"{len(pols)} policies valid, {len(exc)} exception(s)")
+        if not a.check:
+            print("wrote", geordie.write(ws))
     elif a.cmd == "contract":
         from . import contract
         rows, errs = contract.check_all()

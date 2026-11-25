@@ -1,0 +1,87 @@
+# Geordie policies as code. Neutral schema: Geordie's own syntax is not documented to us, so each rule says WHAT to
+# detect and in which MODE. `gmo geordie` validates this file and publishes it to the catalogue branch as
+# geordie/policies.json next to geordie/approved-mcp.json. An adapter turns it into Geordie's format once we know it.
+# Modes: monitor (record only), nudge (explain to the user), block, alert (notify a person).
+# Rule: new policies start in monitor. A policy in block mode needs approved_by and a monitor_since date.
+version: 1
+policies:
+  - id: P1
+    name: Unauthorized MCP
+    objective: unauthorized-mcp
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: nudge
+    when:
+      event: mcp_server_configured
+      agents: [codex]
+      not_in: approved_list
+      identify: {remote: url, local: command-and-package-digest}
+    message: This MCP server is not approved. Ask the platform team to onboard it.
+  - id: P2
+    name: Suspended capability still configured
+    objective: unauthorized-mcp
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: block
+    when: {event: mcp_server_configured, in: blocked_list}
+    message: This MCP server was suspended. Remove it from your configuration.
+  - id: P3
+    name: Unknown remote MCP host
+    objective: unauthorized-mcp
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: nudge
+    when: {event: mcp_server_configured, transport: remote, host_not_in: [approved_hosts, corporate_domains]}
+    message: Remote MCP servers must be on an approved host.
+  - id: P4
+    name: Codex configuration tampering
+    objective: unauthorized-mcp
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: alert
+    when: {event: agent_config_changed, agents: [codex], fields: [mcp_servers, hooks, telemetry], compare_to: managed_config}
+  - id: P5
+    name: Secrets or personal data in a tool call
+    objective: data-leak
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: nudge
+    when: {event: mcp_tool_call, direction: [argument, result], contains: [credentials, api_keys, tokens, connection_strings, personal_data]}
+    message: This tool call contains a secret or personal data. Remove it before sending.
+  - id: P6
+    name: Data sent to a lower-trust server
+    objective: data-leak
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: block
+    when: {event: mcp_tool_call, direction: argument, source_classification: [confidential, restricted], target: {classification_below: source, or_gateway: none}}
+    message: This data is classified higher than the server it is being sent to.
+  - id: P7
+    name: Exfiltration chain
+    objective: data-leak
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: block
+    when: {event: mcp_tool_call_sequence, first: {result_contains: instructions}, then: {different_server: true, direction: outbound}}
+    message: A tool result contained instructions and the agent then called another server.
+  - id: P8
+    name: Oversized or unusual transfer
+    objective: data-leak
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: alert
+    when: {event: mcp_tool_call, size_or_rate_above: tool_baseline}
+  - id: P9
+    name: Local MCP server exposed
+    objective: unauthorized-mcp
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: alert
+    when: {event: local_mcp_listening, bind_not: loopback}
+  - id: P10
+    name: Tool list changed
+    objective: unauthorized-mcp
+    owner: Security (placeholder)
+    mode: monitor
+    next_mode: alert
+    when: {event: mcp_tools_listed, schema_digest_not_equal: approved_list.schema_digest}
