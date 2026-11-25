@@ -366,3 +366,50 @@ def test_geordie_bundle_from_registry(tmp_path):
     assert [e["capability_id"] for e in lst["approved"]] == ["ahead.status-image"] and lst["blocked"] == []
     assert lst["approved"][0]["identify"] == [{"remote_url": "https://mcp.example.invalid/status"}]
     assert len(json.load(open(os.path.join(out, "policies.json")))["policies"]) == 10
+
+
+# ---- deployment readiness ----
+from govpipeline import readiness as rd
+
+POL = {"version": 1, "deploy_role": "Deploy.Approve", "allowed_targets": ["aws-sandbox"]}
+PLAN = {"target": "aws-sandbox", "module": "app", "vars": {"size": "small"}}
+
+
+def _res(agent, status="ok", issues=None):
+    return {"agent": agent, "status": status, "correlation_id": "c-" + agent, "data": {"k": 1}, "issues": issues or []}
+
+
+def _report(*rs): return rd.consolidate(list(rs), "corr-1")
+
+
+def test_readiness_all_ok_and_blockers():
+    ok = _report(_res("requirements"), _res("feasibility"), _res("governance"))
+    assert ok["ready"] and set(ok["sections"]) == set(rd.AGENTS)
+    bad = _report(_res("requirements"), _res("feasibility", "denied", ["no access"]))
+    assert not bad["ready"]
+    assert {b["agent"]: b["status"] for b in bad["blockers"]} == {"feasibility": "denied", "governance": "missing"}
+    junk = _report(_res("requirements"), _res("feasibility"), {"agent": "governance", "status": "ok"})
+    assert not junk["ready"] and any("invalid" in i for b in junk["blockers"] for i in b["issues"])
+
+
+def test_approval_bound_and_policy():
+    rep = _report(_res("requirements"), _res("feasibility"), _res("governance"))
+    d = rd.decide_approval(rep, plan=PLAN, target="aws-sandbox", user="u", roles=["Deploy.Approve"], policy=POL, now=0)
+    assert d["allowed"]
+    rd.verify_approval(d, plan=PLAN, target="aws-sandbox", user="u", now=1)
+    with pytest.raises(PermissionError): rd.verify_approval(d, plan={**PLAN, "vars": {"size": "big"}}, target="aws-sandbox", user="u", now=1)
+    with pytest.raises(PermissionError): rd.verify_approval(d, plan=PLAN, target="aws-sandbox", user="other", now=1)
+    with pytest.raises(PermissionError): rd.verify_approval(d, plan=PLAN, target="aws-sandbox", user="u", now=10_000)
+    no_role = rd.decide_approval(rep, plan=PLAN, target="aws-sandbox", user="u", roles=[], policy=POL)
+    prod = rd.decide_approval(rep, plan={**PLAN, "target": "aws-prod"}, target="aws-prod", user="u", roles=["Deploy.Approve"], policy=POL)
+    blocked = rd.decide_approval(_report(_res("requirements")), plan=PLAN, target="aws-sandbox", user="u", roles=["Deploy.Approve"], policy=POL)
+    assert not no_role["allowed"] and not prod["allowed"] and not blocked["allowed"]
+
+
+def test_deploy_idempotent():
+    rep = _report(_res("requirements"), _res("feasibility"), _res("governance"))
+    d = rd.decide_approval(rep, plan=PLAN, target="aws-sandbox", user="u", roles=["Deploy.Approve"], policy=POL)
+    led, calls = rd.DeployLedger(), []
+    run = lambda: calls.append(1) or {"deployment": "dep-1"}
+    a, b = led.apply(d, run), led.apply(d, run)
+    assert len(calls) == 1 and a["replayed"] is False and b["replayed"] is True and a["deployment"] == b["deployment"]
