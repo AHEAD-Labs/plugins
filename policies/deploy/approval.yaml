@@ -1,0 +1,5 @@
+# Policy approval for deployments. Changes go through a pull request.
+version: 1
+deploy_role: Deploy.Approve        # Entra app role required of the requesting user
+allowed_targets:
+  - aws-sandbox
