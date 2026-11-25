@@ -413,3 +413,33 @@ def test_deploy_idempotent():
     run = lambda: calls.append(1) or {"deployment": "dep-1"}
     a, b = led.apply(d, run), led.apply(d, run)
     assert len(calls) == 1 and a["replayed"] is False and b["replayed"] is True and a["deployment"] == b["deployment"]
+
+
+# ---- terraform plan / apply (real terraform, built-in provider only, no cloud) ----
+import shutil
+from govpipeline import terraform_deploy as td
+
+
+@pytest.mark.skipif(not shutil.which("terraform"), reason="terraform not installed")
+def test_terraform_plan_apply_bound(tmp_path):
+    (tmp_path / "main.tf").write_text('variable "size" { type = string }\nresource "terraform_data" "x" { input = var.size }\n')
+    rec = td.plan(str(tmp_path), target="aws-sandbox", variables={"size": "small"})
+    rep = rd.consolidate([_res("requirements"), _res("feasibility"), _res("governance")], "c1")
+    d = rd.decide_approval(rep, plan=rec, target="aws-sandbox", user="u", roles=["Deploy.Approve"], policy=POL)
+    assert d["allowed"]
+    led = rd.DeployLedger()
+    a = td.apply(str(tmp_path), d, rec, user="u", ledger=led)
+    b = td.apply(str(tmp_path), d, rec, user="u", ledger=led)
+    assert a["status"] == "applied" and not a["replayed"] and b["replayed"]
+    with pytest.raises(PermissionError): td.apply(str(tmp_path), d, rec, user="other", ledger=rd.DeployLedger())
+
+
+@pytest.mark.skipif(not shutil.which("terraform"), reason="terraform not installed")
+def test_terraform_changed_plan_refused(tmp_path):
+    (tmp_path / "main.tf").write_text('resource "terraform_data" "x" { input = "a" }\n')
+    rec = td.plan(str(tmp_path), target="aws-sandbox")
+    rep = rd.consolidate([_res("requirements"), _res("feasibility"), _res("governance")], "c1")
+    d = rd.decide_approval(rep, plan=rec, target="aws-sandbox", user="u", roles=["Deploy.Approve"], policy=POL)
+    (tmp_path / "main.tf").write_text('resource "terraform_data" "x" { input = "b" }\n')
+    td.plan(str(tmp_path), target="aws-sandbox")  # a new plan overwrites plan.bin
+    with pytest.raises(PermissionError, match="changed"): td.apply(str(tmp_path), d, rec, user="u", ledger=rd.DeployLedger())

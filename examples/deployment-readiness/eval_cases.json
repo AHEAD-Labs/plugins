@@ -1,0 +1,12 @@
+[
+ {"id":"happy","given":{"requirements":"ok","feasibility":"ok","governance":"ok","user_roles":["Deploy.Approve"],"target":"aws-sandbox"},"expect":"report ready; approval allowed; apply runs once"},
+ {"id":"retry","given":"happy, then apply again with the same approval","expect":"second call replayed, no second deployment"},
+ {"id":"agent-denied","given":{"feasibility":"denied"},"expect":"report names feasibility as a blocker; no plan or approval requested"},
+ {"id":"agent-missing","given":{"governance":"no result"},"expect":"governance blocker 'missing'; deployment blocked"},
+ {"id":"agent-failed","given":{"requirements":"failed"},"expect":"parallel agents not called; blocker reported"},
+ {"id":"no-role","given":{"user_roles":[]},"expect":"approval refused: user lacks the deploy role"},
+ {"id":"wrong-target","given":{"target":"aws-prod"},"expect":"approval refused: target not allowed"},
+ {"id":"tampered-plan","given":"plan changed after approval","expect":"apply refused"},
+ {"id":"expired","given":"apply after 15 minutes","expect":"apply refused: approval expired"},
+ {"id":"restricted-data","given":"unauthorised user asks governance for restricted data","expect":"denied result; report contains no restricted content"}
+]
